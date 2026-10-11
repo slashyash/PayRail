@@ -1,128 +1,89 @@
 # PayRail — Double-Entry Payments & Settlement Engine
 
-Repository: https://github.com/slashyash/PayRail
+DBMS Course Project · Mid-Semester Submission · **Group 13**
 
-> DBMS Course Project · Full-Stack Database Application
+PayRail is a proposed payments and settlement application for a multi-vendor marketplace. It will track customer payments, platform commission, GST on commission, vendor balances, refunds, payouts and payment-gateway settlements.
 
-PayRail is the money layer of a multi-vendor marketplace. Customers pay the
-platform, the platform keeps a commission and GST, owes the rest to one or more
-vendors, handles refunds, pays vendors out, and reconciles everything against
-the payment gateway's settlement report.
-
-Every money movement is recorded as a **double-entry journal entry** whose
-debits equal its credits. The **database itself** enforces that rule, keeps the
-ledger append-only, and prevents double payouts under concurrent requests.
+The database design uses a double-entry ledger: every journal entry has equal total debits and credits. Balances are derived from ledger entries, and corrections are represented by reversing entries. Transactions, constraints and row locks are planned to maintain consistency and prevent concurrent payouts from exceeding the available balance.
 
 ## Team
 
-| Name | ID | Main responsibility |
-|------|----|---------------------|
-| _Member 1_ | _ID_ | _see contributions below_ |
-| _Member 2_ | _ID_ | |
-| _Member 3_ | _ID_ | |
-| _Member 4_ | _ID_ | |
+**Team name: PayRail**
 
-## Technology stack
+| Member | Student ID |
+|---|---|
+| Aluri Venkata Sai Anirudh | 2023B2AD0824H |
+| Yash Jain | 2023B2A80958H |
+| Aryan Saini | 2024A2PS1154H |
+| Parth Gupta | 2023B4AD0741H |
+| Harsha Vardhan | 2023B4AD1155H |
 
-| Layer | Choice |
-|-------|--------|
-| Database | PostgreSQL 16 (schema `payrail`) |
-| Backend | Node.js 22 + Express, `pg` (node-postgres) with hand-written parameterised SQL |
-| Front end | React (Vite) + Tailwind CSS |
-| Dev setup | Docker Compose (Postgres), seed script in pure SQL |
+## Current progress
 
-## Repository structure
+The project is currently at the **database and application design stage**. Implementation has not started.
 
-```
-db/
-  01_schema.sql              12 tables, keys, CHECK/UNIQUE/NOT NULL constraints
-  02_triggers.sql            balanced-entry, append-only, refund cap, KYC gate, state machine
-  03_views.sql               v_order_summary, v_account_balances, v_vendor_statement
-  04_functions.sql           stored functions for every money workflow
-  05_indexes.sql             partial unique index + performance indexes
-  06_seed.sql                90 days of simulated activity (~32,000 rows)
-  07_queries.sql             the 7 non-trivial report queries (Q1–Q7)
-  08_demo_integrity.sql      Workflow 3 demo: 11 corruption attempts, all rejected
-  09_demo_concurrency_A.sql  Workflow 2 demo, terminal 1
-  09_demo_concurrency_B.sql  Workflow 2 demo, terminal 2
-  run_all.sh                 rebuilds the database from scratch (01 → 06)
-docs/
-  PayRail_Database_Design.pdf       mid-sem database design document (5 pages)
-  PayRail_Application_Design.pdf    workflows, architecture, stack, progress
-  src/                              HTML sources of both PDFs — edit these
-  build_docs.sh                     rebuilds the PDFs (pip install weasyprint)
-  diagrams/                         ER, relational schema and architecture sources (.dot) + PNGs
-                                    make_schema_diagram.py regenerates the schema diagram from the DB
-docker/initdb/00_payrail.sh         container init hook
-docker-compose.yml
-```
+Completed design work:
 
-## Setup
+- Defined the problem, intended users, scope, assumptions and business rules.
+- Prepared the ER/EER model and a relational schema with 12 relations.
+- Specified primary and foreign keys, uniqueness, nullability and integrity constraints.
+- Documented normalization and key schema-design decisions.
+- Designed the application architecture, technology stack and major workflows.
+- Planned database functions, triggers, views, reports and concurrency demonstrations.
 
-### Option A — Docker (recommended)
+Next steps:
 
-```bash
-docker compose up -d            # builds schema + seed on first start (~5 s)
-psql postgres://postgres:postgres@localhost:5432/payrail
-```
+- Implement the PostgreSQL schema and database objects.
+- Populate sample data and test constraints, reports and concurrent transactions.
+- Build the Express API and React interface.
+- Integrate the mock payment gateway and settlement-upload workflow.
+- Test the complete application and prepare the final demonstration.
 
-`docker compose down -v` wipes the database; the next `up` rebuilds it.
+## Design documents
 
-### Option B — Local PostgreSQL 16
+The mid-semester submission comprises:
 
-```bash
-createdb payrail
-./db/run_all.sh payrail         # runs 01_schema.sql … 06_seed.sql in order
-```
+- **PayRail_Database_Design.pdf** — ER/EER diagram, relational schema, keys, integrity constraints, assumptions and normalization/design justification.
+- **PayRail_Application_Design.pdf** — proposed workflows, architecture, technology stack and team responsibilities.
 
-`run_all.sh` drops and recreates schema `payrail`, so it can be re-run any time.
-In psql, run `SET search_path TO payrail;` (or prefix names with `payrail.`).
+Include the latest versions of both PDFs in the repository with this README.
 
-## Running the demos
+## Proposed technology stack
 
-```bash
-psql -d payrail -f db/07_queries.sql          # all report queries
-psql -d payrail -f db/08_demo_integrity.sql   # every attack must print an ERROR
-```
+| Layer | Technology |
+|---|---|
+| Database | PostgreSQL 16 |
+| Backend | Node.js 22, Express and `pg` with parameterised SQL |
+| Front end | React with Vite and Tailwind CSS |
+| Development environment | Docker Compose for PostgreSQL; SQL scripts for schema creation and sample data |
 
-Concurrency (two terminals):
+Architecture: **React interface ↔ Express API ↔ PostgreSQL database**. A mock gateway will simulate payment callbacks and settlement reports.
 
-```bash
-# terminal 1 — pauses while holding the lock
-psql -d payrail -f db/09_demo_concurrency_A.sql
-# terminal 2 — blocks, then fails with "Insufficient balance"
-psql -d payrail -f db/09_demo_concurrency_B.sql
-```
+## Major application workflows
 
-## Major workflows
+1. **Checkout and payment capture:** create an order, snapshot product prices and commission rates, and record payment attempts. A successful capture will create a balanced journal entry allocating the payment to vendor payables, platform commission and GST. Idempotency keys will prevent repeated callbacks from creating duplicate records.
+2. **Vendor payouts:** lock the vendor's account, check the derived balance and record the payout within a transaction. Concurrent requests for the same vendor will be processed in sequence. A failed transfer will produce a reversing entry.
+3. **Refunds and integrity checks:** request refunds against individual order lines, validate eligibility and refundable limits, and post the approved refund entries. Planned tests will cover unbalanced entries, changes to ledger history, excessive refunds and duplicate captures.
+4. **Settlement reconciliation and reporting:** compare payment records with gateway settlement reports, identify missing or mismatched settlements, and produce trial balances, vendor statements, performance reports and aging reports.
 
-1. **Checkout & payment capture.** `fn_place_order` creates the order with
-   price/commission snapshots. `fn_capture_payment` (gateway webhook) is
-   idempotent, locks the order, and posts one balanced journal entry:
-   Dr gateway clearing; Cr each vendor's payable, platform commission, GST.
-2. **Vendor payout under concurrency.** `fn_request_payout` locks the vendor's
-   account row (`SELECT … FOR UPDATE`), checks the derived balance, creates the
-   payout and posts Dr vendor payable / Cr bank. `fn_complete_payout` marks it
-   paid, or reverses the entry if the bank transfer fails.
-3. **Refunds & integrity enforcement.** `fn_request_refund` → trigger checks the
-   refund cap; `fn_approve_refund` posts the mirror-image entry. The integrity demo
-   shows the DBMS rejecting unbalanced entries, edits to history, over-refunds,
-   payouts to non-KYC vendors, duplicate captures and invalid values.
-4. **Reconciliation & reports.** `fn_record_settlement` posts matched settlement
-   lines; Q3 classifies every payment as MATCHED / IN_TRANSIT / MISSING /
-   AMOUNT_MISMATCH / UNKNOWN. Q1 trial balance, Q2 vendor statement, Q4–Q7
-   analytics.
+## Important order-item rule
 
-## Progress (mid-sem)
+A product may appear **only once in an order**. Adding the same product again increases the quantity on its existing line, subject to the combined quantity limit of 1–100.
 
-- [x] Requirements, ER/EER design, relational schema, normalization
-- [x] Complete database layer: tables, constraints, triggers, functions, views, indexes
-- [x] Seed data (~32,000 rows) generated through the same functions the app uses
-- [x] Report queries Q1–Q7 and integrity/concurrency demo scripts
-- [ ] Express API (routes, auth, validation)
-- [ ] React front end (storefront, vendor dashboard, finance console)
-- [ ] Mock gateway simulator (webhooks + settlement CSV upload)
+The proposed `order_items` relation retains the primary key `(order_id, line_no)` and adds `UNIQUE(order_id, product_id)`, with both columns mandatory. The order/product pair is therefore an additional candidate key, as reflected in the normalization justification. Each line stores its purchase-time price and commission rate.
 
-## Contributions
+## Team contributions and responsibilities
 
-_Fill in per member: design, SQL objects, backend routes, front-end screens, docs._
+The following table records the team's allocation of design work and planned implementation ownership. Each member has an equal share of the design responsibilities.
+
+| Member | Design responsibility | Planned implementation ownership |
+|---|---|---|
+| Aluri Venkata Sai Anirudh | Requirements, business rules and ER/EER modelling | Design documentation and schema consistency |
+| Yash Jain | Relational schema, keys and normalization analysis | Schema integration and integrity validation |
+| Aryan Saini | Ledger constraints, trigger design and integrity-test scenarios | Refund/payout validation and concurrency testing |
+| Parth Gupta | Workflow-function design and transaction/concurrency planning | Backend API, authentication and mock-gateway integration |
+| Harsha Vardhan | Sample-data planning, reporting queries, views and index design | Frontend dashboards and report integration |
+
+## Setup and execution
+
+There is no runnable application at this stage. Database scripts, sample data and setup/run instructions will be added as implementation progresses. The current submission is for review of the proposed design.
