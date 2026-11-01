@@ -6,14 +6,13 @@ _Last updated: 2026-11-02, end of session 2 (Task 1)._
 **T1 DONE** (acceptance evidenced in TEST_EVIDENCE T1-01…T1-12, including real Docker Compose on Parth's Mac). Next: **T2 — stored workflows, seed, database correctness.**
 
 ## Working state
-- Mac folder `/Users/parth/payrail-dbms project` is a git clone of `slashyash/PayRail` (`main` @ `65c50bb`, same as GitHub at session start — no teammate changes to reconcile). Everything from sessions 1–2 is **uncommitted** there; the team should review, commit and push.
+- Mac folder `/Users/parth/payrail-dbms project` is a git clone of `slashyash/PayRail` (`main` @ `65c50bb`, same as GitHub at session start — no teammate changes to reconcile). Sessions 1–2 were committed by Parth as `e92486b` on branch **`task1-core-db`** and pushed to GitHub (2026-11-02); a pull request into `main` is the next step for the team. Later edits in the folder (like this note) are uncommitted until the next commit.
 - Session 2 wrote these files into the folder (and kept the docs' Project copies in sync):
   - new: `docker-compose.yml`, `.env.example`, `.gitignore`, `.nvmrc`
   - new: `db/README.md`, `db/build.sh`, `db/reset_dev.sh`, `db/docker-init.sh`
   - new: `db/schema/00_roles.sql 01_schema.sql 02_tables.sql 03_ledger.sql 04_helpers.sql 05_guards.sql 06_system_accounts.sql 30_views.sql 31_indexes.sql 99_privileges.sql`
   - new: `db/tests/run_sql_tests.sh`, `db/tests/_lib/{assert,fixtures,try,expect_ok,expect_error}.sql`, `db/tests/01_constraints.sql 02_money.sql 10_ledger.sql 11_ledger_immutability.sql 12_capture_example.sql`
   - updated: `CLAUDE.md`, `docs/DECISIONS.md` (DEC-021…025), `docs/TASKS.md`, `docs/REQUIREMENTS.md`, `docs/TEST_EVIDENCE.md`, `docs/HANDOFF.md`
-- `.git/stale-maintenance-lock-claude` is an empty lock file left by Claude's `git fetch` and moved aside; it is safe to delete.
 - Shell scripts need the executable bit (`chmod +x db/*.sh db/tests/*.sh`); it was set from Claude's shell after writing.
 
 ## Commands actually run (session 2)
