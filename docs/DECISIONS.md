@@ -180,3 +180,45 @@ _Task 1 (2026-11-02): DEC-003, DEC-004, DEC-006, DEC-007 (system accounts), DEC-
 - Docker Compose builds the schema through `/docker-entrypoint-initdb.d` **only when the volume is empty**; the healthcheck waits for the `payrail` schema. Normal `docker compose up` never drops anything.
 - SQL tests: `db/tests/run_sql_tests.sh` rebuilds `payrail_test` before each file; checks are psql scripts that print `PASS`/`FAIL` using the psql variables `ERROR` / `LAST_ERROR_SQLSTATE`, so deferred-trigger checks see a **real COMMIT**. Test 11 opens a genuine second connection as `payrail_app`.
 - `payrail_app` gets `CONNECT` only on the database (no `TEMPORARY`), `USAGE` on the schema, `SELECT` on tables/views, column-limited `INSERT`/`UPDATE` and `DELETE` on `products`, and `EXECUTE` on pure helpers.
+
+---
+_Task 2 (2026-11-02): the workflow halves of DEC-005, DEC-008, DEC-009, DEC-010, DEC-011, DEC-012 are implemented and tested (TEST_EVIDENCE T2-xx). Status of those entries is unchanged until the team confirms; refinements made while implementing are below._
+
+## DEC-026 — Deferred balance triggers run as the owner — ACCEPTED (bug fix to T1 `03_ledger.sql`)
+- **Problem found in Task 2:** a deferred constraint trigger fires at COMMIT, *after* the SECURITY DEFINER workflow function has returned, so it runs with the privileges of the committing login. When `payrail_app` committed a capture, the trigger's call to `fn_assert_entry_balanced` failed with `42501` and the whole capture rolled back. T1 tests never committed a posting as the app, so this was latent.
+- **Decision:** `trg_journal_entries_balanced` and `trg_ledger_lines_balanced` are SECURITY DEFINER with the pinned `search_path` (they only read and raise). `fn_assert_entry_balanced` stays ungranted.
+- **Impact:** no schema change; test `24_app_role.sql` now runs W1–W4 end to end as a real `payrail_app` login.
+
+## DEC-027 — Workflow function interface — ACCEPTED (refines DBD §10 function list)
+- **Original:** DBD §10 names `fn_place_order, fn_capture_payment, fn_request_refund, fn_approve_refund, fn_request_payout, fn_complete_payout, fn_record_settlement, fn_reverse_entry`.
+- **Decision:** all eight names kept. Added: `fn_initiate_payment`, `fn_fail_payment`, `fn_reject_refund`, `fn_reconcile`, `fn_reconciliation_report` (read-only). Signatures in `db/README.md`.
+  - The **actor** (customer / vendor_admin / finance_admin user id) is an explicit argument and is re-checked in the database (`PRA01`); the backend (T3) passes the id from the verified JWT, never from the request body. Gateway callbacks (`fn_capture_payment`, `fn_fail_payment`) have no user actor; T3 authenticates them with the shared HMAC secret.
+  - `fn_reverse_entry` exists but is **internal** (not granted): only `fn_complete_payout` uses it, so the app cannot reverse arbitrary entries.
+  - `fn_place_order` takes `[{product_id, quantity}]` JSON; extra keys such as a client price are ignored (snapshot trigger fills catalogue values). Order placement moves no money and has **no idempotency key**; a duplicate leaves an unpaid order (shown as `pending_payment`). The payment attempt is the idempotent step.
+  - `fn_capture_payment` rechecks the amount against both the attempt and the derived order total (`PRP01`) and rejects capturing a second attempt of a paid order (`PRS02`, the losing attempt can then be failed).
+  - Refund approval assigns a deterministic simulated gateway refund id `rfnd_R<9-digit refund_id>`.
+  - `fn_record_settlement` returns `inserted | duplicate | conflict` instead of raising for duplicates/conflicts, so a CSV import (T5) can report per row without aborting; format errors still raise (`23514`). A settlement date after today (IST) is rejected (`PRV07`). Matching rows are posted at import; `fn_reconcile` revisits the rest.
+- **Reason:** keeps the submitted names; makes every rule enforceable in SQL independently of the backend.
+
+## DEC-028 — Workflows require READ COMMITTED (`PRX01`) — ACCEPTED (refines DEC-012)
+- **Problem:** the lock protocol relies on each statement after a row lock taking a fresh snapshot. Under REPEATABLE READ the snapshot is fixed at the first statement, so a payout could read a stale balance after waiting for the lock (locking an unmodified row raises no serialization error).
+- **Decision:** every funds-changing workflow calls `fn_require_read_committed()` and raises `PRX01` otherwise. The backend uses the default isolation level.
+- **Evidence:** a mutation run with the payout lock removed made all 8 concurrent payouts succeed (overspend); with the lock exactly 3 of 8 succeed (TEST_EVIDENCE T2-10).
+
+## DEC-029 — Reconciliation details — ACCEPTED (refines DEC-009)
+- A settlement row whose reference is known but whose **record type** differs (a payment reported as a refund row) is categorised `amount_mismatch` with detail `reported as refund, recorded as payment` — "known reference, reported data differs". Not posted.
+- A row whose reference belongs to a payment that is **not captured** (failed / initiated) is `unknown_reference` with that detail: there is no settleable event for it. Not posted.
+- `in_transit` while `as_of ≤ event date + 2`; `overdue_missing` from the day after; `days_overdue = as_of − expected date`.
+- Every captured payment / processed refund dated ≤ `as_of` appears exactly once in the report, and every settlement row settled ≤ `as_of` appears exactly once (test 23).
+
+## DEC-030 — Deterministic seed — ACCEPTED (implements DEC-015)
+- `db/seed/seed.sql` simulates 1 Sep – 31 Oct 2026 day by day (one COMMIT per simulated day), calling only the workflow functions for anything financial; master data (users, vendors, products) is inserted directly.
+- No `random()`: choices come from `md5(event key)`; all timestamps come from `payrail.clock`. Test 29 rebuilds a second database and checks an identical fingerprint of ledger, payments, refunds, payouts, settlements and order lines (bcrypt salts are the only random part).
+- Demo password `PayRail@2026` for every seeded login (bcrypt cost 10). Demo reconciliation date `2026-10-31`.
+- Note for statements/reports: `created_at` defaults to `fn_now()` = `now()` = **transaction start time** for the app. Two concurrent transactions can therefore commit in a different order than their timestamps; `entry_id` order reflects lock (serialization) order. Concurrency checks use `entry_id` order.
+
+## DEC-031 — Workflow SQL file numbering — ACCEPTED (refines DEC-024)
+`20_wf_common.sql` (internal helpers) · `21_wf_orders_payments.sql` · `22_wf_refunds.sql` · `23_wf_payouts.sql` · `24_wf_settlements.sql`. Each workflow function is granted explicitly in `99_privileges.sql`; internal helpers are not.
+
+## DEC-032 — Concurrency tests live in `backend/` — ACCEPTED (refines DEC-019)
+`backend/package.json` (+ lockfile, `pg` 8.13.1) is created now with only the concurrency tests (`npm run test:concurrency`); Task 3 adds the API to the same package. Workers are independent `payrail_app` connections released together by an advisory-lock barrier and hold their transaction open briefly, so overlaps are real; the harness records how many workers were observed waiting on a row lock.

@@ -3,7 +3,7 @@
 --   * may READ every table and view (login needs users.password_hash);
 --   * may WRITE only the non-financial catalogue (products: create, edit
 --     name/price/active flag, delete an unreferenced product — DEC-014);
---   * may EXECUTE pure helpers and, from Task 2, the workflow functions;
+--   * may EXECUTE pure helpers and the workflow functions (Task 2);
 --   * has NO direct INSERT/UPDATE/DELETE/TRUNCATE on orders, payments,
 --     refunds, payouts, settlements, accounts or the ledger.
 
@@ -34,7 +34,33 @@ GRANT EXECUTE ON FUNCTION
   fn_vendor_payable_account(bigint)
 TO payrail_app;
 
--- Deliberately NOT granted: fn_post_entry, fn_assert_entry_balanced, trigger functions.
--- Task 2 adds: GRANT EXECUTE ON FUNCTION fn_place_order(...), ... TO payrail_app;
+-- Business workflows (Task 2). All SECURITY DEFINER with a pinned search_path;
+-- each checks the actor's role / ownership itself (DEC-022).
+GRANT EXECUTE ON FUNCTION
+  fn_place_order(bigint, jsonb),
+  fn_initiate_payment(bigint, bigint, text, uuid),
+  fn_capture_payment(bigint, text, bigint),
+  fn_fail_payment(bigint, text),
+  fn_request_refund(bigint, bigint, integer, bigint, text, uuid),
+  fn_approve_refund(bigint, bigint),
+  fn_reject_refund(bigint, bigint),
+  fn_request_payout(bigint, bigint, uuid),
+  fn_complete_payout(bigint, bigint, text, text),
+  fn_record_settlement(bigint, text, text, bigint, bigint, date),
+  fn_reconcile(bigint, date)
+TO payrail_app;
+
+-- Read-only helpers used by reports and the backend.
+GRANT EXECUTE ON FUNCTION
+  fn_cart_lines(jsonb),
+  fn_vendor_balance(bigint),
+  fn_order_total(bigint),
+  fn_reconciliation_report(date)
+TO payrail_app;
+
+-- Deliberately NOT granted (internal building blocks; granting them would let
+-- the app post arbitrary entries or skip the workflow checks):
+--   fn_post_entry, fn_reverse_entry, fn_try_post_settlement, fn_lock_vendor_accounts,
+--   fn_require_role, fn_require_read_committed, fn_assert_entry_balanced, trigger functions.
 
 RESET ROLE;

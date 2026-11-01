@@ -7,7 +7,7 @@ Target dates are a suggested schedule against the GL §7 submission date (15 Nov
 |---|---|---|---|---|
 | T0 | Repository audit and executable plan | — | 2 Nov | DONE |
 | T1 | Reproducible foundation and core database | T0 | 3 Nov | DONE |
-| T2 | Stored workflows, seed, database correctness | T1 | 5–6 Nov | TODO |
+| T2 | Stored workflows, seed, database correctness | T1 | 5–6 Nov | DONE |
 | T3 | Backend and authentication | T2 | 7–8 Nov | TODO |
 | T4 | Customer workflow UI | T3 | 9–10 Nov | TODO |
 | T5 | Vendor and finance workflow UI | T3 (parallel with T4) | 10–11 Nov | TODO |
@@ -37,16 +37,16 @@ Target dates are a suggested schedule against the GL §7 submission date (15 Nov
 - [x] Tests: `01_constraints`, `02_money`, `10_ledger`, `11_ledger_immutability`, `12_capture_example` + `run_sql_tests.sh` → 135 passed (TEST_EVIDENCE T1-07/08)
 **Acceptance:** clean DB builds with documented commands ✔ (T1-01, T1-04, T1-06); constraint tests and deferred validation pass with real COMMIT, incl. zero-line, single-line and late insertion ✔ (T1-07); UPDATE/DELETE/TRUNCATE/INSERT on the ledger fail as a real `payrail_app` login ✔; hand-traceable capture + refund example balances ✔ (test 12). Compose verified on a team machine ✔ (T1-11, T1-12).
 
-## T2 — Stored workflows and correctness — TODO
-Files: `db/schema/20_wf_orders_payments.sql`, `21_wf_refunds.sql`, `22_wf_payouts.sql`, `23_wf_settlements.sql` (SECURITY DEFINER, granted in `99_privileges.sql`, DEC-022); `db/seed/seed.sql`; tests `20_*`+ and Node concurrency tests.
-- [ ] `fn_place_order` (verified vendor, active product, qty aggregate ≤ 100, snapshots)
-- [ ] `fn_initiate_payment`, `fn_capture_payment` / failure path (DEC-010, DEC-011)
-- [ ] `fn_request_refund`, `fn_approve_refund`, `fn_reject_refund` (DEC-005, DEC-012)
-- [ ] `fn_request_payout`, `fn_complete_payout` (paid / failed→reversal) (DEC-008)
-- [ ] `fn_import_settlement_row` / `fn_reconcile(as_of)` (DEC-009); `fn_reverse_entry`
-- [ ] Deterministic seed via these functions with fixed clock; ≥500 rows; scenarios: failed payments, abandoned orders, partial+full refunds, negative vendor balance, failed payout, settlement matched/in-transit/overdue/mismatch/unknown, pending/rejected KYC vendors
-- [ ] Tests: workflows, invalid ops, idempotent retries, key conflicts, rounding fixtures, rollback-on-error, **concurrent** payouts/refunds/duplicate keys (separate connections)
-**Acceptance:** as PI Task 2; record actual row counts and trial-balance totals.
+## T2 — Stored workflows and correctness — DONE (2026-11-02)
+Files: `db/schema/20_wf_common.sql`, `21_wf_orders_payments.sql`, `22_wf_refunds.sql`, `23_wf_payouts.sql`, `24_wf_settlements.sql` (SECURITY DEFINER, granted in `99_privileges.sql`); fix in `03_ledger.sql` (DEC-026); `db/seed/seed.sql`; tests `20`–`24`, `29`, `_lib/expect_error_rollback.sql`; `backend/test/concurrency/` (+ `backend/package.json`, lockfile).
+- [x] `fn_place_order` (verified vendor, active product, qty aggregate ≤ 100, snapshots, client price ignored)
+- [x] `fn_initiate_payment`, `fn_capture_payment`, `fn_fail_payment` (DEC-010, DEC-011, DEC-027)
+- [x] `fn_request_refund`, `fn_approve_refund`, `fn_reject_refund` (DEC-005, DEC-012)
+- [x] `fn_request_payout`, `fn_complete_payout` (paid / failed → one reversal via internal `fn_reverse_entry`) (DEC-008)
+- [x] `fn_record_settlement`, `fn_reconcile(as_of)`, `fn_reconciliation_report(as_of)` (DEC-009, DEC-029)
+- [x] Deterministic seed via these functions with fixed clock: 5,769 rows; failed/abandoned/initiated payments, partial + full + three-step + rejected + pending refunds, negative vendor balance (recovered and at end), failed payouts, all five reconciliation categories incl. late callback, pending/rejected KYC, archived + draft products
+- [x] Tests: 138 new SQL checks + 12 concurrency races with independent connections; mutation check shows the payout race test detects a missing lock
+**Acceptance (PI Task 2):** SQL-level workflows ✔ (T2-02, 24 as `payrail_app`); invalid operations fail cleanly ✔; duplicate retries harmless / conflicting keys fail ✔; partial-refund rounding exact ✔; genuine concurrent payout and refund tests ✔ (T2-05/06/10); failed transaction rolls back all effects ✔; negative vendor balance, failed payout reversed once, capture amount mismatch, account creation/uniqueness ✔; actual row counts and trial balance recorded ✔ (T2-07/08). Not yet run in the real Docker image on a team Mac (see TEST_EVIDENCE "Not run yet").
 
 ## T3 — Backend and authentication — TODO
 - [ ] Express app, `pg` pool, transaction helper using one checked-out client
