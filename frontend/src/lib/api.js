@@ -24,7 +24,7 @@ export class ApiError extends Error {
   }
 }
 
-export async function request(method, path, { body, query, idempotencyKey, signal } = {}) {
+export async function request(method, path, { body, rawBody, contentType, query, idempotencyKey, signal } = {}) {
   let url = `/api${path}`;
   if (query) {
     const qs = new URLSearchParams();
@@ -34,12 +34,13 @@ export async function request(method, path, { body, query, idempotencyKey, signa
   }
   const headers = { Accept: 'application/json' };
   if (body !== undefined) headers['Content-Type'] = 'application/json';
+  if (rawBody !== undefined) headers['Content-Type'] = contentType ?? 'text/plain';
   if (token) headers.Authorization = `Bearer ${token}`;
   if (idempotencyKey) headers['Idempotency-Key'] = idempotencyKey;
 
   let res;
   try {
-    res = await fetch(url, { method, headers, body: body === undefined ? undefined : JSON.stringify(body), signal });
+    res = await fetch(url, { method, headers, body: rawBody ?? (body === undefined ? undefined : JSON.stringify(body)), signal });
   } catch (e) {
     if (e.name === 'AbortError') throw e;
     throw new ApiError(0, 'network', 'Could not reach the PayRail server. Check that the backend is running, then retry.');
@@ -66,4 +67,8 @@ export async function request(method, path, { body, query, idempotencyKey, signa
 export const api = {
   get: (path, query, opts) => request('GET', path, { query, ...opts }),
   post: (path, body, opts) => request('POST', path, { body, ...opts }),
+  patch: (path, body, opts) => request('PATCH', path, { body, ...opts }),
+  del: (path, opts) => request('DELETE', path, opts),
+  /** POST a text body as-is (e.g. a settlement CSV with contentType 'text/csv') */
+  postText: (path, text, contentType, opts) => request('POST', path, { rawBody: text, contentType, ...opts }),
 };

@@ -1,69 +1,64 @@
 # PayRail — Handoff
 
-_Last updated: 2026-11-02, end of session 5 (Task 4)._
+_Last updated: 2026-11-02, end of session 6 (Task 5)._
 
 ## Current milestone
-**T4 DONE** (acceptance evidenced in TEST_EVIDENCE T4-01…T4-11; revised in the same session per DEC-038 — customers now pay on a separate gateway page, and the fault-injection buttons are finance-only). Next: **T5 — vendor and finance UI** (critical path), then T6 reports.
+**T5 DONE** (acceptance evidenced in TEST_EVIDENCE T5-01…T5-09). All four workflows now run end to end in the UI. Next: **T6 — named SQL reports and DBMS evidence** (critical path), then T7 integration/demo reliability.
 
 ## Working state
-- Mac folder `/Users/parth/payrail-dbms project`: git clone of `slashyash/PayRail`. `main` @ `3f00944` includes Task 3 (PR #3 merged; branch `task3-backend` deleted). **Task 4 committed and pushed** on branch **`task4-customer-ui` @ `d7c2e3c`** (45 files, branched from `main` @ `3f00944`); next: open/merge its PR (https://github.com/slashyash/PayRail/pull/new/task4-customer-ui). This HANDOFF line is the only change after that commit.
-- Session 5 wrote into the folder (Project copies of the docs kept in sync):
-  - new: `frontend/` — `package.json`, `package-lock.json`, `vite.config.js`, `playwright.config.js`, `index.html`, `README.md`, `src/main.jsx`, `src/App.jsx`, `src/index.css`, `src/lib/{api,money,money.test,idempotency,useApi}.js`, `src/state/{auth,cart}.jsx`, `src/components/{Layout,ui,DeliveryResults}.jsx`, `src/pages/{Login,Catalogue,Cart,Pay,GatewayCheckout,GatewaySimulator,Orders,OrderDetail,Refunds,StaffHome}.jsx`, `e2e/customer.spec.js`
-  - changed (DEC-038 revision): `backend/src/gateway.js` (test instruments, `decideCheckout`), `backend/src/routes/gateway.js` (hosted checkout; `simulate` finance-only), `backend/src/routes/finance.js` (`GET /payments`), `backend/test/api/{_setup.js,auth.test.js,customer.test.js,finance.test.js}`, `backend/README.md`
-  - changed: `.gitignore` (+ `test-results/`, `playwright-report/`)
-  - docs: `CLAUDE.md`, `docs/DECISIONS.md` (DEC-037), `docs/TASKS.md`, `docs/REQUIREMENTS.md`, `docs/TEST_EVIDENCE.md`, `docs/HANDOFF.md`
-- No schema or seed change → existing Docker volumes are fine. **Restart the backend** (`npm start`) to pick up the new gateway routes.
+- Mac folder `/Users/parth/payrail-dbms project`: git clone of `slashyash/PayRail`, `main` @ `c77df2b` (Task 4 merged as PR #4). Session 6 wrote the T5 files into it **uncommitted** (Claude does not commit). An untracked `AGENTS.md` (a Codex copy of CLAUDE.md, not Claude's) was there before and was left untouched.
+- Files written by session 6 (Project copies of the docs kept in sync):
+  - new: `frontend/src/pages/vendor/{VendorHome,Products,Statement,Payouts}.jsx`, `frontend/src/pages/finance/{Refunds,Payouts,Settlements,Reconciliation,TrialBalance,LedgerEntries}.jsx`, `frontend/e2e/vendor-finance.spec.js`, `samples/settlements/{01_normal,02_reupload_duplicate_conflict,03_exceptions}.csv`, `samples/settlements/README.md`
+  - changed: `frontend/src/App.jsx` (role routes), `frontend/src/components/Layout.jsx` (vendor/finance nav), `frontend/src/components/ui.jsx` (badges, `Stat`, `formatDate`, `Money` shows `—` for null), `frontend/src/lib/api.js` (`patch`, `del`, `postText`), `frontend/e2e/customer.spec.js` (finance now lands on `/finance/refunds`), `backend/src/settlementCsv.js` + `backend/src/routes/finance.js` (invalid CSV rows echo `gateway_ref`), `backend/test/api/finance.test.js` (+2 assertions), `backend/README.md`, `frontend/README.md`
+  - **deleted:** `frontend/src/pages/StaffHome.jsx` (placeholder, no longer imported) — if it is still in the folder, `git rm frontend/src/pages/StaffHome.jsx`
+  - docs: `CLAUDE.md`, `docs/{DECISIONS (DEC-039), TASKS, REQUIREMENTS, TEST_EVIDENCE, HANDOFF}.md`
+- No schema, seed or dependency change → existing Docker volumes and `node_modules` are fine. **Restart the backend** to pick up the small import-response change.
+- Suggested commit: branch `task5-vendor-finance-ui`, `git add -A frontend backend samples docs CLAUDE.md` (not `AGENTS.md` unless the team wants it), push, PR.
 
-## Commands actually run (session 5, cloud sandbox, PG 16.15 TCP/scram, node 22.23.4)
+## Commands actually run (session 6, cloud sandbox, PG 16.15 TCP/scram, node 22.23.4)
 | Command | Result |
 |---|---|
-| `git clone -b task3-backend https://github.com/slashyash/PayRail` (same commit as the Mac) | `0077331` |
-| `db/tests/run_sql_tests.sh`; `cd backend && npm ci && npm run test:api && npm run test:concurrency` (before changes) | 273 passed; 32/32; 12/12 |
-| `cd frontend && npm test` | 3/3 |
-| `rm -rf node_modules && npm ci && npm run build && npm audit` | build OK, 0 vulnerabilities |
-| `npm run test:e2e` (rebuilds `payrail_e2e`) | 3 passed, 3 full runs green (T4-03) |
-| mutation: new key on every call → `npx playwright test -g "lost response"`; restored | caught (Expected 1, Received 2); then 3 passed (T4-04) |
-| `psql` on `payrail_e2e`: UI-created order 370, its ledger, trial balance | hand-checked split and refund allocation (T4-05) |
-| manual Playwright: backend stopped / restarted | error states + Retry recovery (T4-06) |
-| `cd backend && npm run test:api` (after the first version) | 32/32 (T4-07) |
-| DEC-038 revision: `npm run test:api` (`API_TEST_LOG=1`) | 33/33, no 500s (T4-08) |
-| `npm run test:e2e` ×3 | 4 passed each (T4-09) |
-| mutations: checkout accepts any instrument; new key per call (both reverted) | each caught (T4-10) |
-| SQL tests; API; concurrency; e2e; unit; build | 273; 33; 12; 4; 3; built (T4-11) |
+| `git clone https://github.com/slashyash/PayRail` (= Mac `main` @ `c77df2b`) | ok |
+| baseline: SQL tests; `npm run test:api`; `test:concurrency`; frontend `npm test`; `test:e2e` | 273; 33/33; 12/12; 3/3; 4 passed |
+| sample CSVs via `curl` on a fresh `payrail` + `POST /reconcile` | T5-01/T5-02 (all expected outcomes) |
+| `npm run test:e2e` ×3, then ×1 after the last UI change | 9 passed each time |
+| mutations (payout key ignored; `as_of` ignored), reverted | each caught (T5-05) |
+| `psql` on `payrail_e2e`: failed payout + reversal, balances, settlement postings | T5-06 |
+| SQL tests; API; concurrency; unit; build; audit | 273; 33/33; 12/12; 3/3; built; 0 vulnerabilities |
 
 ## To try it on the Mac (not run there yet)
 ```bash
 cd ~/"payrail-dbms project"
 docker compose up -d db
 cd backend && npm ci && npm start              # terminal 1 → http://127.0.0.1:4000
-cd frontend && npm ci && npm run dev           # terminal 2 → open http://127.0.0.1:5173
-# log in as customer1@payrail.demo / PayRail@2026
-# browser smoke test (separate DB payrail_e2e, own servers on :4100/:5174 — stop nothing):
-npx playwright install chromium
-PAYRAIL_REBUILD_VIA_DOCKER=1 npm run test:e2e
+cd frontend && npm ci && npm run dev           # terminal 2 → http://127.0.0.1:5173
+# vendor1@payrail.demo / finance@payrail.demo / customer1@payrail.demo — password PayRail@2026
+npx playwright install chromium               # once
+PAYRAIL_REBUILD_VIA_DOCKER=1 npm run test:e2e  # 9 tests, separate DB payrail_e2e
 ```
-Node: Vite 8 needs ≥ 22.12 (Node 26 works but prints `EBADENGINE`). zsh: do not paste `# comments` unless `setopt interactivecomments`.
+The sample CSVs match only a freshly seeded DB (`db/reset_dev.sh --yes payrail` — DESTRUCTIVE for that DB — or a new Docker volume).
 
-## Demo path (~4 min)
-Customer: Shop → filter by a vendor, add 2 products from 2 vendors → Cart shows "multi-vendor order" → Place order → **Continue to pay** → redirected to the **MockPay Gateway (TEST MODE)** page → click `failure@payrail` → Pay → back at the shop: "Payment not completed", attempt `failed` → choose Card → Continue → click test card `4111 1111 1111 1111` → Pay → "Payment successful" → View order → Request refund on a line: more than refundable + demo box → database refuses (`PRR01`); then ₹100.50 → `requested` → **Send the same request again** → same refund id.
-Finance (`finance@payrail.demo`) → **Gateway simulator**: pick an `initiated` attempt (e.g. one a customer left at the gateway) → **Gateway error: callback reports a different amount** (409 `PRP01`, nothing posted) → **Success, delivered 3×** (one capture) → **Failure callback** (409 `PRS01`). Refund approval UI is T5 (for now: `POST /api/finance/refunds/:id/approve`).
+## Demo path for T5 (~5 min)
+1. **Vendor** (`vendor1`): Dashboard (ledger balance, sales split) → Products: add a draft, edit price, Reactivate, Archive, Delete it; Delete an "ordered" product → `23503` refused → Statement (pick a From date: opening balance + running balance) → Payouts: request ₹150.25 → "Send the same request again" (same id) → amount larger than the balance + demo checkbox → `PRF01`.
+2. **Finance**: Payouts → Mark failed on that payout → request + reversal entries shown → "record failed again" (still 2 entries) → Mark paid… on another (UTR) → Refunds: approve one (balanced refund entry), reject one (nothing posted) → Settlements: upload `01_normal.csv` (4 posted), again (4 duplicates), `02…` (duplicate / conflict / new), `03_exceptions.csv` (not posted / rejected / invalid) → Reconciliation: Run → five categories; search `pay_S000999999` (unknown) → Ledger: Σ D = Σ C.
+3. **Refusals**: `vendor11` (KYC pending) payout → `PRV03`; `vendor7` (negative balance) → `PRF01`.
 
-## What T4 demonstrates (viva notes)
-- **Three tiers, one source of truth:** every screen reads PostgreSQL views through the API (`v_order_summary`, `v_order_line_allocation`); order status and refundable amounts are derived, never computed in the browser.
-- **Never trust the client:** the order request is `{product_id, quantity}`; price/commission are snapshotted by `trg_order_items_snapshot`; the payment amount is `fn_order_total`.
-- **Idempotency from the user's side:** the key is created per logical action and reused on retry; a test drops the first response after the server committed it and shows one attempt / one refund, and a mutation (new key per click) makes it fail.
-- **Two parties:** the shop never decides a payment's outcome; the gateway does (test instruments) and tells the backend through an HMAC-signed callback. Fault injection (duplicates, wrong amount, late failure) is a finance-only tool; the database accepts each outcome once and refuses the rest, with SQLSTATEs shown.
-- **Exact money:** BigInt formatting/parsing; the test compares ledger sums as BigInt.
+## What T5 demonstrates (viva notes)
+- **Derived balances:** every vendor balance is Σ credit − Σ debit on its payable account; the statement's running balance is a window function (`SUM … OVER (ORDER BY created_at, entry_id, line_no)`), the date filter is applied *after* the window so the first row's balance is still correct.
+- **Locks + idempotency from the UI:** a payout request carries one key per logical request; the function locks the payable account, reads the balance and refuses overspend. A lost response or double click returns the same payout.
+- **State machines instead of keys:** finance decisions are guarded by row state — repeating "failed" posts no second reversal; contradicting a final state is `PRS01`.
+- **Referential integrity as a feature:** a product with order lines cannot be deleted (FK, `23503`); archive instead.
+- **Bounded, row-level import:** one transaction, a SAVEPOINT per row; only exact matches post; duplicates are harmless; conflicts keep the original; unknown references are stored and post later when the payment appears (`fn_reconcile`).
 
 ## Known blockers / risks
-- T4 has not run on a team Mac yet (Playwright needs `npx playwright install chromium` there).
-- PROPOSED decisions (DEC-002, DEC-005…DEC-022, DEC-035) are implemented as defaults; flag objections. DEC-037 lists UI limitations (JWT in localStorage, order placement not keyed, vendor placeholder page); DEC-038 notes that public test instruments still let a customer pick the simulated outcome, as in any gateway test mode.
-- Schedule: 13 days to the GL §7 submission date (15 Nov); T5 is the critical path, then T6.
+- First Mac run (Parth, 2026-11-02): backend + DB came up after two local fixes — `.env` secrets were still placeholders, and the Docker volume's `payrail_app` password differed from `.env` (login/health 500; fixed with `ALTER ROLE`, see `backend/README.md` Troubleshooting). `/api/health` → `ok`, `db_user payrail_app`. UI checklist and `npm run test:e2e` on the Mac: not yet reported. T7 should make this failure obvious (e.g. a clearer startup check).
+- PROPOSED decisions (DEC-002, DEC-005…DEC-022, DEC-035) are implemented as defaults; flag objections.
+- Schedule: 13 days to the GL §7 submission date (15 Nov). T6 next (reports R1–R6 + EXPLAIN evidence + feature matrix), then T7, T8 (PDF ≤ 5 pages, README contributions **confirmed by the team**).
 
 ## How the next session should start
 1. Read `CLAUDE.md`, `docs/HANDOFF.md`, `docs/TASKS.md`, `docs/DECISIONS.md` from the Mac folder; `git status` / `git log` there.
-2. Get the code into the sandbox: if the team has pushed, `git clone -b <branch> https://github.com/slashyash/PayRail` (fast; worked this session) and copy over any uncommitted files from the Mac; otherwise stage the files. Start a PG16 cluster (CLAUDE.md recipe), write a sandbox root `.env`, run `db/tests/run_sql_tests.sh` (273), `cd backend && npm ci && npm run test:api` (32) and `test:concurrency` (12), `cd frontend && npm ci && npm run test:e2e` (4).
-3. Implement T5, write changed files back, update docs.
+2. Get the code into the sandbox: `git clone -b <branch> https://github.com/slashyash/PayRail` if pushed, plus any uncommitted Mac files; start a PG16 cluster (CLAUDE.md recipe), write a sandbox root `.env`, run SQL tests (273), `npm run test:api` (33), `test:concurrency` (12), `cd frontend && npm ci && npm run test:e2e` (9).
+3. Implement T6, write changed files back, update docs.
 
 ## Next concrete action
-T5 in `frontend/`: route by role (replace `StaffHome.jsx`). Vendor: products list/create/edit/archive/reactivate/delete-draft (`/api/vendor/products`), balance + running statement with date filter (`/api/vendor/me`, `/statement`), payout request with `useIdempotencyKey` + history (`/api/vendor/payouts`). Finance (keep the existing Gateway simulator screen and add nav items): refund queue approve/reject, payout queue paid (UTR)/failed, settlement CSV upload (`text/csv`, show per-row results) + `samples/settlements/*.csv` (normal, duplicate, conflict, mismatch, unknown ref, future date), reconcile + reconciliation categories, trial balance. Add Playwright specs for vendor → finance payout (incl. failed payout restoring funds once, overspend refused, unverified vendor refused) and customer → finance refund.
+T6: create `db/reports/R1_trial_balance.sql` … `R6_vendor_payables.sql` (parameterised, aggregated at the right grain), small hand-checkable fixtures in `db/tests/` (new SQL test file), expose via `GET /api/finance/reports/:name` and vendor-scoped R2/R4 under `/api/vendor/reports/…`, add a finance **Reports** page (first Recharts chart: R3 monthly performance) and a vendor report view; collect `EXPLAIN (ANALYZE, BUFFERS)` on the seeded DB for R2/R5 and justify `31_indexes.sql`; write the feature matrix (transactions, views, triggers, functions, indexes → file + demo command).

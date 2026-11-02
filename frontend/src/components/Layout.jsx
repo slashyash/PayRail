@@ -26,14 +26,27 @@ export default function Layout() {
               <NavLink to="/refunds" className={link}>My refunds</NavLink>
             </nav>
           )}
+          {user.role === 'vendor_admin' && (
+            <nav className="flex flex-wrap gap-1" aria-label="Main">
+              <NavLink to="/vendor" end className={link}>Dashboard</NavLink>
+              <NavLink to="/vendor/products" className={link}>Products</NavLink>
+              <NavLink to="/vendor/statement" className={link}>Statement</NavLink>
+              <NavLink to="/vendor/payouts" className={link}>Payouts</NavLink>
+            </nav>
+          )}
           {user.role === 'finance_admin' && (
             <nav className="flex flex-wrap gap-1" aria-label="Main">
+              <NavLink to="/finance/refunds" className={link}>Refunds</NavLink>
+              <NavLink to="/finance/payouts" className={link}>Payouts</NavLink>
+              <NavLink to="/finance/settlements" className={link}>Settlements</NavLink>
+              <NavLink to="/finance/reconciliation" className={link}>Reconciliation</NavLink>
+              <NavLink to="/finance/ledger" className={link}>Ledger</NavLink>
               <NavLink to="/finance/gateway" className={link}>Gateway simulator</NavLink>
             </nav>
           )}
           <div className="ml-auto flex items-center gap-3 text-sm">
             <span className="text-slate-600">
-              {user.full_name} <span className="text-slate-400">({user.role.replace('_', ' ')})</span>
+              {user.full_name}{user.vendor_name ? ` · ${user.vendor_name}` : ''} <span className="text-slate-400">({user.role.replace('_', ' ')})</span>
             </span>
             <button type="button" className="btn-secondary" onClick={signOut}>Log out</button>
           </div>

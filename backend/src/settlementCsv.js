@@ -42,15 +42,17 @@ export function parseSettlementCsv(text) {
     const lineNo = i + 1;
     if (raw.includes('"')) { invalid.push({ line: lineNo, errors: ['quoted fields are not supported'] }); continue; }
     const cells = raw.split(',').map((s) => s.trim());
+    // echo the reference of a bad row (only if it is a plain reference) so the report can name it
+    const ref = /^[A-Za-z0-9_]{1,64}$/.test(cells[0]) ? cells[0] : undefined;
     if (cells.length !== COLUMNS.length) {
-      invalid.push({ line: lineNo, errors: [`expected ${COLUMNS.length} fields, found ${cells.length}`] });
+      invalid.push({ line: lineNo, gateway_ref: ref, errors: [`expected ${COLUMNS.length} fields, found ${cells.length}`] });
       continue;
     }
     const obj = Object.fromEntries(COLUMNS.map((c, k) => [c, cells[k]]));
     if (obj.fee_paise === '') delete obj.fee_paise;
     const r = settlementRowSchema.safeParse(obj);
     if (r.success) rows.push({ line: lineNo, data: r.data });
-    else invalid.push({ line: lineNo, errors: r.error.issues.map((x) => `${x.path.join('.')}: ${x.message}`) });
+    else invalid.push({ line: lineNo, gateway_ref: ref, errors: r.error.issues.map((x) => `${x.path.join('.')}: ${x.message}`) });
   }
   return { rows, invalid };
 }

@@ -1,0 +1,5 @@
+gateway_ref,record_type,gross_paise,fee_paise,settled_on
+pay_S000000365,payment,1678600,33572,2026-10-31
+pay_S000000366,payment,839400,16788,2026-10-31
+pay_S000000018,payment,848300,16966,2026-10-31
+rfnd_R000000044,refund,2099400,0,2026-10-31
