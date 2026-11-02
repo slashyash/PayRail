@@ -2,15 +2,27 @@
   "name": "payrail-backend",
   "version": "0.1.0",
   "private": true,
-  "description": "PayRail backend (Express API arrives in Task 3). For now: database concurrency tests.",
+  "description": "PayRail backend: Express API over the PostgreSQL stored workflows, plus database concurrency tests.",
   "type": "module",
   "engines": {
     "node": ">=22 <23"
   },
   "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js",
+    "test": "npm run test:api",
+    "test:api": "NODE_ENV=test node --test --test-concurrency=1 test/api/*.test.js",
     "test:concurrency": "node --test --test-concurrency=1 test/concurrency/*.test.js"
   },
   "dependencies": {
-    "pg": "8.13.1"
-  }
+    "bcryptjs": "2.4.3",
+    "express": "5.3.0",
+    "jsonwebtoken": "9.0.3",
+    "pg": "8.13.1",
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "supertest": "7.3.1"
+  },
+  "main": "src/server.js"
 }

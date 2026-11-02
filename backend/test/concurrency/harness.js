@@ -15,27 +15,18 @@
 //   5. while they run, the admin samples pg_stat_activity and records the
 //      largest number of workers waiting on a row/transaction lock — evidence
 //      that the race really contended.
-import { execFileSync } from 'node:child_process';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import pg from 'pg';
+import { APP_PASSWORD, resetDatabase } from '../_env.js';   // loads the root .env first
 
-const here = path.dirname(fileURLToPath(import.meta.url));
-export const REPO = path.resolve(here, '../../..');
 export const DB = process.env.PAYRAIL_CONC_DB || 'payrail_conc';
-const APP_PASSWORD = process.env.APP_DB_PASSWORD || 'payrail_app_dev_only';
 const BARRIER_KEY = 4242;
 
 export function rebuildDatabase() {
   // DESTRUCTIVE only for the dedicated test database (reset_dev.sh guards the name).
-  // Without a local psql (e.g. only Docker on a Mac), rebuild it inside the container instead:
-  //   docker compose exec -T db bash /payrail/db/reset_dev.sh --yes payrail_conc
-  // and run the tests with PAYRAIL_CONC_SKIP_REBUILD=1 (the seeded demo rows do not disturb them).
+  // Docker-only machine: PAYRAIL_REBUILD_VIA_DOCKER=1 rebuilds inside the compose container.
+  // PAYRAIL_CONC_SKIP_REBUILD=1 skips it (e.g. rebuilt by hand; seeded demo rows do not disturb the tests).
   if (process.env.PAYRAIL_CONC_SKIP_REBUILD === '1') return;
-  execFileSync(path.join(REPO, 'db/reset_dev.sh'), ['--yes', DB], {
-    env: { ...process.env, PAYRAIL_SKIP_SEED: '1', APP_DB_PASSWORD: APP_PASSWORD },
-    stdio: 'pipe',
-  });
+  resetDatabase(DB, { seed: false });
 }
 
 export async function adminClient() {
