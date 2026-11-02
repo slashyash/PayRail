@@ -8,7 +8,7 @@ Target dates are a suggested schedule against the GL §7 submission date (15 Nov
 | T0 | Repository audit and executable plan | — | 2 Nov | DONE |
 | T1 | Reproducible foundation and core database | T0 | 3 Nov | DONE |
 | T2 | Stored workflows, seed, database correctness | T1 | 5–6 Nov | DONE |
-| T3 | Backend and authentication | T2 | 7–8 Nov | TODO |
+| T3 | Backend and authentication | T2 | 7–8 Nov | DONE |
 | T4 | Customer workflow UI | T3 | 9–10 Nov | TODO |
 | T5 | Vendor and finance workflow UI | T3 (parallel with T4) | 10–11 Nov | TODO |
 | T6 | SQL reports and DBMS evidence | T2 (SQL), T4/T5 (UI exposure) | 12 Nov | TODO |
@@ -48,13 +48,15 @@ Files: `db/schema/20_wf_common.sql`, `21_wf_orders_payments.sql`, `22_wf_refunds
 - [x] Tests: 138 new SQL checks + 12 concurrency races with independent connections; mutation check shows the payout race test detects a missing lock
 **Acceptance (PI Task 2):** SQL-level workflows ✔ (T2-02, 24 as `payrail_app`); invalid operations fail cleanly ✔; duplicate retries harmless / conflicting keys fail ✔; partial-refund rounding exact ✔; genuine concurrent payout and refund tests ✔ (T2-05/06/10); failed transaction rolls back all effects ✔; negative vendor balance, failed payout reversed once, capture amount mismatch, account creation/uniqueness ✔; actual row counts and trial balance recorded ✔ (T2-07/08). Not yet run in the real Docker image on a team Mac (see TEST_EVIDENCE "Not run yet").
 
-## T3 — Backend and authentication — TODO
-- [ ] Express app, `pg` pool, transaction helper using one checked-out client
-- [ ] Login (bcrypt + JWT), role middleware, ownership checks; Zod validation; uniform error format
-- [ ] Endpoints for W1–W4, products CRUD, reports; pagination/filters
-- [ ] Mock gateway: authenticated local callback (shared HMAC secret), stable event ids, controllable success/failure/duplicate/amount-mismatch
-- [ ] API integration tests against a test database
-**Acceptance:** as PI Task 3 (unauthenticated, cross-customer/vendor, finance-only, invalid input; server never trusts client prices/rates/ownership/balance; no secrets committed).
+## T3 — Backend and authentication — DONE (2026-11-02)
+Files: `backend/src/` (`app.js`, `server.js`, `config.js`, `db.js`, `errors.js`, `validate.js`, `auth.js`, `gateway.js`, `settlementCsv.js`, `routes/{catalogue,customer,vendor,finance,gateway}.js`), `backend/test/api/` (`_setup.js` + 5 files), `backend/README.md`, `backend/package.json` + lockfile (express 5.3.0, zod 4.6.7, jsonwebtoken 9.0.3, bcryptjs 2.4.3, supertest 7.3.1 dev; `npm audit`: 0 vulnerabilities), `.env.example`.
+- [x] Express app, `pg` pool as `payrail_app` (int8/date kept as strings), `withTransaction` on one checked-out client (settlement import, SAVEPOINT per row)
+- [x] Login (bcrypt + HS256 JWT), role guards, ownership scoping; Zod strict validation; uniform error format with SQLSTATE mapping (DEC-034, DEC-035)
+- [x] Endpoints for W1–W4, product CRUD, ledger views (trial balance, vendor statement, journal entries, reconciliation report); pagination/filters — named T6 reports still to come
+- [x] Mock gateway: HMAC-signed callback (±5 min), stable refs/event ids, controllable success/failure/duplicate deliveries/amount mismatch (DEC-033)
+- [x] Settlement import as CSV or JSON with row-level results (DEC-036)
+- [x] API integration tests against a rebuilt, seeded test database: 32 tests (T3-01…T3-04)
+**Acceptance (PI Task 3):** API tests exercise the database ✔, all four workflows ✔, invalid input ✔, unauthenticated / forged / expired tokens ✔, cross-customer and cross-vendor access ✔, finance-only actions ✔ (T3-01). Financial endpoints never accept client prices, commission rates, ownership or balances (strict schemas, actor from the JWT; tested) ✔. Real HTTP server smoke test ✔ (T3-05). No secrets committed (only `.env.example` placeholders; the server refuses `CHANGE…` values) ✔. Verified on Parth's Mac with Docker: server + login, API tests 32/32, concurrency tests 12/12 (T3-07, T3-08, T3-11; ran on Node v26 — Node 22 run still pending).
 
 ## T4 — Customer UI — TODO
 Catalogue search/filter, cart, multi-vendor checkout, simulated payment (success/fail/duplicate), order history/detail, per-line refund request; loading/empty/error states; idempotency key reuse on retry.
