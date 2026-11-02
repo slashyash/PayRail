@@ -17,7 +17,7 @@ Demo logins (password `PayRail@2026`): `customer1…60@payrail.demo`, `vendor1�
 ## Tests
 ```bash
 # test/_env.js loads the root .env: PGUSER/PGPASSWORD default to POSTGRES_USER/POSTGRES_PASSWORD; rebuilds payrail_apitest per file
-npm run test:api
+npm run test:api                                  # 40 tests (reports: test/api/reports.test.js)
 PAYRAIL_REBUILD_VIA_DOCKER=1 npm run test:api     # no local psql: rebuild inside the compose container
 npm run test:concurrency                          # Task 2 multi-connection database tests
 PAYRAIL_REBUILD_VIA_DOCKER=1 npm run test:concurrency
@@ -58,7 +58,8 @@ PAYRAIL_REBUILD_VIA_DOCKER=1 npm run test:concurrency
 | `POST /api/mock-gateway/payments/:id/simulate` `{outcome, amount_paise?, deliveries?}` | finance_admin | fault injection: signs and delivers callbacks (DEC-038) |
 | `POST /api/gateway/callback` (HMAC headers) | gateway | `fn_capture_payment` / `fn_fail_payment` |
 | `POST /api/orders/:id/refunds` `{line_no, amount_paise, reason}` + key, `GET /api/refunds` | customer | `fn_request_refund` |
-| `GET /api/vendor/me`, `/statement?from&to`, `/sales`, `/payouts` | vendor_admin | `fn_vendor_balance`, `v_vendor_statement` |
+| `GET /api/vendor/me`, `/statement?from&to`, `/sales`, `/payouts` | vendor_admin | `fn_vendor_balance`; statement = report R2 `fn_report_vendor_statement` (adds `reference`, `period_credit_paise`, `period_debit_paise`) |
+| `GET /api/vendor/reports/refund-risk?from&to`, `/reports/payables` | vendor_admin (own vendor only; no rank) | R4 `fn_report_vendor_refund_risk`, R6 `fn_report_vendor_payables` |
 | `GET/POST /api/vendor/products`, `PATCH/DELETE /api/vendor/products/:id` | vendor_admin | `products` (only table the app writes) |
 | `POST /api/vendor/payouts` `{amount_paise}` + key | vendor_admin | `fn_request_payout` |
 | `GET /api/finance/refunds?status&vendor_id`, `POST …/:id/approve`, `POST …/:id/reject` | finance_admin | `fn_approve_refund`, `fn_reject_refund` |
@@ -67,7 +68,8 @@ PAYRAIL_REBUILD_VIA_DOCKER=1 npm run test:concurrency
 
 Import response: `{ summary: {inserted, duplicate, conflict, rejected, invalid, posted}, results: [{line, gateway_ref, result, settlement_id?, posted_entry_id?, error?, errors?}] }` — `invalid` rows echo `gateway_ref` when their first cell is a plain reference (T5). Sample files: `samples/settlements/`.
 | `POST /api/finance/reconcile` `{as_of?}`, `GET /api/finance/reconciliation?as_of&category&gateway_ref` | finance_admin | `fn_reconcile`, `fn_reconciliation_report` |
-| `GET /api/finance/trial-balance`, `/vendors`, `/journal-entries?…`, `/orders/:id`, `/payments?status&order_id` | finance_admin | `v_account_balances`, ledger, payments |
+| `GET /api/finance/trial-balance?as_of`, `/vendors`, `/journal-entries?…`, `/orders/:id`, `/payments?status&order_id` | finance_admin | trial balance = report R1; `v_account_balances`, ledger, payments |
+| `GET /api/finance/reports` (list), `/reports/trial-balance?as_of`, `/reports/vendor-statement?vendor_id&from&to&page`, `/reports/monthly-performance?from&to` (≤ 120 months), `/reports/refund-risk?from&to&min_sales_paise`, `/reports/settlement-aging?as_of` (default demo as-of), `/reports/vendor-payables?vendor_id` | finance_admin | R1–R6 in `db/schema/32_reports.sql` (Task 6, DEC-040) |
 
 ## Mock gateway (DEC-033, DEC-038)
 **Customer path (hosted checkout).** The shop redirects the customer to the gateway's page; the customer pays with a

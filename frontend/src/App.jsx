@@ -1,5 +1,6 @@
 // Routes. The backend enforces every role/ownership rule; these guards only
 // keep the UI coherent (a vendor never sees the customer pages, etc.).
+import { lazy, Suspense } from 'react';
 import { Navigate, Outlet, Route, Routes, useLocation } from 'react-router-dom';
 import Layout from './components/Layout.jsx';
 import { ErrorBox, Spinner } from './components/ui.jsx';
@@ -22,6 +23,11 @@ import VendorPayouts from './pages/vendor/Payouts.jsx';
 import Statement from './pages/vendor/Statement.jsx';
 import VendorHome from './pages/vendor/VendorHome.jsx';
 import { useAuth } from './state/auth.jsx';
+
+// Recharts is large: load the report pages only when opened (own chunk)
+const FinanceReports = lazy(() => import('./pages/finance/Reports.jsx'));
+const VendorReports = lazy(() => import('./pages/vendor/Reports.jsx'));
+const lazyPage = (el) => <Suspense fallback={<Spinner label="Loading report…" />}>{el}</Suspense>;
 
 function RequireAuth() {
   const { user, checking, sessionError, restore, loggedOutBy } = useAuth();
@@ -72,12 +78,14 @@ export default function App() {
             <Route path="vendor/products" element={<Products />} />
             <Route path="vendor/statement" element={<Statement />} />
             <Route path="vendor/payouts" element={<VendorPayouts />} />
+            <Route path="vendor/reports" element={lazyPage(<VendorReports />)} />
           </Route>
           <Route element={<RequireRole role="finance_admin" />}>
             <Route path="finance/refunds" element={<FinanceRefunds />} />
             <Route path="finance/payouts" element={<FinancePayouts />} />
             <Route path="finance/settlements" element={<Settlements />} />
             <Route path="finance/reconciliation" element={<Reconciliation />} />
+            <Route path="finance/reports" element={lazyPage(<FinanceReports />)} />
             <Route path="finance/ledger" element={<TrialBalance />} />
             <Route path="finance/gateway" element={<GatewaySimulator />} />
           </Route>

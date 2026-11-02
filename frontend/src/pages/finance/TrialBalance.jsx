@@ -1,6 +1,7 @@
-// Trial balance: Σ debits and Σ credits per account from v_account_balances,
-// and the global check Σ debit = Σ credit (always true for a ledger whose every
-// entry balances at COMMIT). The fuller report with filters is Task 6 (R1).
+// Trial balance: Σ debits and Σ credits per account and the global check
+// Σ debit = Σ credit (always true for a ledger whose every entry balances at
+// COMMIT). Served by report R1 (fn_report_trial_balance); the full R1 view with
+// Dr/Cr balance columns and an as-of filter is Finance → Reports.
 //   GET /api/finance/trial-balance
 import { useState } from 'react';
 import { ErrorBox, Money, Notice, Spinner, StatusBadge } from '../../components/ui.jsx';

@@ -4,10 +4,11 @@
 // the vendor the logged-in user owns (req.user.vendor_id), never from input.
 import { Router } from 'express';
 import { z } from 'zod';
-import { ApiError, notFound } from '../errors.js';
+import { notFound } from '../errors.js';
 import {
   dateString, idempotencyKey, idString, offset, pageOf, pageQuery, paiseString, parseBody, parseParams, parseQuery,
 } from '../validate.js';
+import { vendorReportRoutes, vendorStatement } from './reports.js';
 
 const productName = z.string().trim().min(1).max(200);
 const createProduct = z.object({
@@ -78,35 +79,18 @@ export function vendorRoutes({ db }) {
     res.status(204).end();
   });
 
-  // ------------------------------------------------------------ statement (ledger-derived)
-  // Running balance is computed by the window function in v_vendor_statement
-  // over ALL of the vendor's lines; the date filter is applied afterwards, so
-  // balances stay correct, and the opening balance is the balance before `from`.
+  // ------------------------------------------------------------ statement (ledger-derived) = report R2
+  // fn_report_vendor_statement: the running balance is the window function in
+  // v_vendor_statement over ALL of the vendor's lines; the date filter is
+  // applied afterwards, so balances stay correct, and the opening balance is
+  // the balance before `from`.
   r.get('/statement', async (req, res) => {
     const q = parseQuery(req, { ...pageQuery, from: dateString.optional(), to: dateString.optional() });
-    if (q.from && q.to && q.from > q.to) throw new ApiError(422, 'invalid_input', 'from must not be after to');
-    const params = [req.user.vendor_id, q.from ?? null, q.to ?? null];
-    const range = `vendor_id = $1
-      AND ($2::date IS NULL OR (created_at AT TIME ZONE 'Asia/Kolkata')::date >= $2)
-      AND ($3::date IS NULL OR (created_at AT TIME ZONE 'Asia/Kolkata')::date <= $3)`;
-    const [{ rows }, opening, closing] = await Promise.all([
-      db.query(
-        `SELECT entry_id, line_no, created_at, entry_type, description, payment_id, refund_id, payout_id,
-                reverses_entry_id, credit_paise, debit_paise, running_balance_paise, count(*) OVER () AS total_count
-           FROM v_vendor_statement WHERE ${range}
-          ORDER BY created_at, entry_id, line_no LIMIT $4 OFFSET $5`, [...params, q.page_size, offset(q)]),
-      db.one(
-        `SELECT coalesce(sum(credit_paise - debit_paise), 0)::bigint AS b FROM v_vendor_statement
-          WHERE vendor_id = $1 AND $2::date IS NOT NULL AND (created_at AT TIME ZONE 'Asia/Kolkata')::date < $2`,
-        params.slice(0, 2)),
-      db.one(`SELECT coalesce(sum(credit_paise - debit_paise), 0)::bigint AS b FROM v_vendor_statement WHERE ${range}`, params),
-    ]);
-    res.json({
-      ...pageOf(rows, q),
-      opening_balance_paise: opening.b,
-      closing_balance_paise: (BigInt(opening.b) + BigInt(closing.b)).toString(),   // exact BigInt, no Number
-    });
+    res.json(await vendorStatement(db, req.user.vendor_id, q));
   });
+
+  // own-vendor reports R4 / R6 (Task 6)
+  r.use('/reports', vendorReportRoutes({ db }));
 
   // lines of this vendor's products that were sold (paid orders), with the snapshot split
   r.get('/sales', async (req, res) => {

@@ -32,6 +32,7 @@ export default function Layout() {
               <NavLink to="/vendor/products" className={link}>Products</NavLink>
               <NavLink to="/vendor/statement" className={link}>Statement</NavLink>
               <NavLink to="/vendor/payouts" className={link}>Payouts</NavLink>
+              <NavLink to="/vendor/reports" className={link}>Reports</NavLink>
             </nav>
           )}
           {user.role === 'finance_admin' && (
@@ -41,6 +42,7 @@ export default function Layout() {
               <NavLink to="/finance/settlements" className={link}>Settlements</NavLink>
               <NavLink to="/finance/reconciliation" className={link}>Reconciliation</NavLink>
               <NavLink to="/finance/ledger" className={link}>Ledger</NavLink>
+              <NavLink to="/finance/reports" className={link}>Reports</NavLink>
               <NavLink to="/finance/gateway" className={link}>Gateway simulator</NavLink>
             </nav>
           )}

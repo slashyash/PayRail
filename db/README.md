@@ -18,10 +18,12 @@ PostgreSQL 16, schema `payrail`. Plain ordered SQL files, no migration framework
 | `schema/23_wf_payouts.sql` | W2: `fn_request_payout`, `fn_complete_payout` (paid / failed → reversal) |
 | `schema/24_wf_settlements.sql` | W4: `fn_record_settlement`, `fn_reconcile`, `fn_reconciliation_report` |
 | `schema/30_views.sql` | `v_account_balances`, `v_order_line_allocation`, `v_order_summary`, `v_vendor_statement` |
-| `schema/31_indexes.sql` | secondary indexes |
+| `schema/31_indexes.sql` | secondary indexes (EXPLAIN evidence: `docs/evidence/T6_explain_seed.txt`) |
+| `schema/32_reports.sql` | named reports R1–R6: `fn_report_trial_balance`, `fn_report_vendor_statement`, `fn_report_monthly_performance`, `fn_report_vendor_refund_risk`, `fn_report_settlement_aging`, `fn_report_vendor_payables` (read-only, inlinable SQL) |
 | `schema/99_privileges.sql` | least-privilege grants for `payrail_app` |
 | `seed/seed.sql` | deterministic demo data, generated **through the workflow functions** under the controlled clock (1 Sep – 31 Oct 2026) |
 | `tests/` | SQL tests (`run_sql_tests.sh`); concurrency tests live in `backend/test/concurrency/` |
+| `reports/` | psql runners for the reports: `run_reports.sql` (print R1–R6), `explain_reports.sql` (EXPLAIN ANALYZE + index experiment); walkthrough in `reports/README.md` |
 
 ## Commands
 All scripts use the standard libpq variables (`PGHOST`, `PGPORT`, `PGUSER`, `PGPASSWORD`) and connect as an **administrator**. The backend never does; it logs in as `payrail_app`.

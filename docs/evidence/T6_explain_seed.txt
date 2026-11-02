@@ -1,0 +1,692 @@
+-- Output of: psql -X -d payrail -f db/reports/explain_reports.sql (Task 6, cloud sandbox, PostgreSQL 16.15,
+-- freshly seeded payrail database, 2026-11-02). Timings are machine-dependent; compare plan shapes and buffers.
+
+SET
+ANALYZE
+=== R1 fn_report_trial_balance()
+                                                                              QUERY PLAN                                                                              
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ Subquery Scan on fn_report_trial_balance  (cost=133.33..133.56 rows=18 width=139) (actual time=1.606..1.613 rows=18 loops=1)
+   Buffers: shared hit=38
+   ->  Sort  (cost=133.33..133.38 rows=18 width=143) (actual time=1.605..1.608 rows=18 loops=1)
+         Sort Key: (GROUPING(a.account_id)), a.account_id
+         Sort Method: quicksort  Memory: 27kB
+         Buffers: shared hit=38
+         ->  GroupAggregate  (cost=131.07..132.96 rows=18 width=143) (actual time=1.545..1.584 rows=18 loops=1)
+               Group Key: a.account_id, a.code, a.account_class, a.owner_type, a.vendor_id, v.legal_name, (fn_normal_side(a.account_class))
+               Group Key: ()
+               Buffers: shared hit=38
+               ->  Sort  (cost=131.07..131.12 rows=17 width=161) (actual time=1.530..1.534 rows=17 loops=1)
+                     Sort Key: a.account_id, a.code, a.account_class, a.owner_type, a.vendor_id, v.legal_name, (fn_normal_side(a.account_class))
+                     Sort Method: quicksort  Memory: 26kB
+                     Buffers: shared hit=38
+                     ->  Hash Left Join  (cost=125.19..130.73 rows=17 width=161) (actual time=1.457..1.513 rows=17 loops=1)
+                           Hash Cond: (a.account_id = l.account_id)
+                           Buffers: shared hit=38
+                           ->  Hash Left Join  (cost=1.27..6.75 rows=17 width=97) (actual time=0.143..0.193 rows=17 loops=1)
+                                 Hash Cond: (a.vendor_id = v.vendor_id)
+                                 Buffers: shared hit=2
+                                 ->  Seq Scan on accounts a  (cost=0.00..5.42 rows=17 width=80) (actual time=0.115..0.160 rows=17 loops=1)
+                                       Buffers: shared hit=1
+                                 ->  Hash  (cost=1.12..1.12 rows=12 width=25) (actual time=0.015..0.015 rows=12 loops=1)
+                                       Buckets: 1024  Batches: 1  Memory Usage: 9kB
+                                       Buffers: shared hit=1
+                                       ->  Seq Scan on vendors v  (cost=0.00..1.12 rows=12 width=25) (actual time=0.004..0.005 rows=12 loops=1)
+                                             Buffers: shared hit=1
+                           ->  Hash  (cost=123.74..123.74 rows=15 width=72) (actual time=1.299..1.300 rows=15 loops=1)
+                                 Buckets: 1024  Batches: 1  Memory Usage: 9kB
+                                 Buffers: shared hit=36
+                                 ->  HashAggregate  (cost=123.51..123.74 rows=15 width=72) (actual time=1.284..1.288 rows=15 loops=1)
+                                       Group Key: l.account_id
+                                       Batches: 1  Memory Usage: 24kB
+                                       Buffers: shared hit=36
+                                       ->  Hash Join  (cost=31.59..89.24 rows=2742 width=18) (actual time=0.187..0.830 rows=2742 loops=1)
+                                             Hash Cond: (l.entry_id = e.entry_id)
+                                             Buffers: shared hit=36
+                                             ->  Seq Scan on ledger_lines l  (cost=0.00..50.42 rows=2742 width=26) (actual time=0.003..0.156 rows=2742 loops=1)
+                                                   Buffers: shared hit=23
+                                             ->  Hash  (cost=21.26..21.26 rows=826 width=8) (actual time=0.170..0.170 rows=826 loops=1)
+                                                   Buckets: 1024  Batches: 1  Memory Usage: 41kB
+                                                   Buffers: shared hit=13
+                                                   ->  Seq Scan on journal_entries e  (cost=0.00..21.26 rows=826 width=8) (actual time=0.003..0.079 rows=826 loops=1)
+                                                         Buffers: shared hit=13
+ Planning:
+   Buffers: shared hit=347
+ Planning Time: 1.451 ms
+ Execution Time: 1.759 ms
+(48 rows)
+
+=== R2 fn_report_vendor_statement(3, 2026-10-01, 2026-10-15)
+                                                                                      QUERY PLAN                                                                                      
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ Sort  (cost=105.27..105.27 rows=3 width=216) (actual time=0.701..0.706 rows=15 loops=1)
+   Sort Key: ('0'::bigint)
+   Sort Method: quicksort  Memory: 27kB
+   Buffers: shared hit=73
+   CTE s
+     ->  Subquery Scan on vs  (cost=71.95..78.79 rows=161 width=135) (actual time=0.324..0.430 rows=59 loops=1)
+           Buffers: shared hit=39
+           ->  WindowAgg  (cost=71.95..77.99 rows=161 width=131) (actual time=0.319..0.389 rows=59 loops=1)
+                 Buffers: shared hit=39
+                 ->  Sort  (cost=71.95..72.35 rows=161 width=117) (actual time=0.309..0.315 rows=59 loops=1)
+                       Sort Key: e.created_at, e.entry_id, l.line_no
+                       Sort Method: quicksort  Memory: 32kB
+                       Buffers: shared hit=39
+                       ->  Hash Join  (cost=40.08..66.05 rows=161 width=117) (actual time=0.164..0.285 rows=59 loops=1)
+                             Hash Cond: (e.entry_id = l.entry_id)
+                             Buffers: shared hit=39
+                             ->  Seq Scan on journal_entries e  (cost=0.00..21.26 rows=826 width=95) (actual time=0.003..0.063 rows=826 loops=1)
+                                   Buffers: shared hit=13
+                             ->  Hash  (cost=38.07..38.07 rows=161 width=30) (actual time=0.145..0.146 rows=59 loops=1)
+                                   Buckets: 1024  Batches: 1  Memory Usage: 12kB
+                                   Buffers: shared hit=26
+                                   ->  Nested Loop  (cost=9.70..38.07 rows=161 width=30) (actual time=0.093..0.133 rows=59 loops=1)
+                                         Buffers: shared hit=26
+                                         ->  Seq Scan on accounts a  (cost=0.00..1.25 rows=1 width=16) (actual time=0.005..0.006 rows=1 loops=1)
+                                               Filter: ((owner_type = 'vendor'::text) AND (vendor_id = '3'::bigint))
+                                               Rows Removed by Filter: 16
+                                               Buffers: shared hit=1
+                                         ->  Bitmap Heap Scan on ledger_lines l  (cost=9.70..34.99 rows=183 width=30) (actual time=0.086..0.119 rows=59 loops=1)
+                                               Recheck Cond: (account_id = a.account_id)
+                                               Heap Blocks: exact=23
+                                               Buffers: shared hit=25
+                                               ->  Bitmap Index Scan on ledger_lines_account_entry_idx  (cost=0.00..9.65 rows=183 width=0) (actual time=0.079..0.079 rows=59 loops=1)
+                                                     Index Cond: (account_id = a.account_id)
+                                                     Buffers: shared hit=2
+   CTE in_range
+     ->  WindowAgg  (cost=4.04..4.06 rows=1 width=160) (actual time=0.031..0.038 rows=13 loops=1)
+           ->  Sort  (cost=4.04..4.04 rows=1 width=152) (actual time=0.027..0.028 rows=13 loops=1)
+                 Sort Key: s.created_at, s.entry_id, s.line_no
+                 Sort Method: quicksort  Memory: 26kB
+                 ->  CTE Scan on s  (cost=0.00..4.03 rows=1 width=152) (actual time=0.004..0.007 rows=13 loops=1)
+                       Filter: ((on_date >= '2026-10-01'::date) AND (on_date <= '2026-10-15'::date))
+                       Rows Removed by Filter: 46
+   CTE opening
+     ->  Aggregate  (cost=3.90..3.91 rows=1 width=8) (actual time=0.529..0.529 rows=1 loops=1)
+           Buffers: shared hit=39
+           ->  CTE Scan on s s_1  (cost=0.00..3.62 rows=54 width=16) (actual time=0.326..0.523 rows=27 loops=1)
+                 Filter: (on_date < '2026-10-01'::date)
+                 Rows Removed by Filter: 32
+                 Buffers: shared hit=39
+   ->  Append  (cost=0.00..18.48 rows=3 width=216) (actual time=0.534..0.684 rows=15 loops=1)
+         Buffers: shared hit=73
+         ->  CTE Scan on opening o  (cost=0.00..0.03 rows=1 width=216) (actual time=0.533..0.534 rows=1 loops=1)
+               Buffers: shared hit=39
+         ->  Nested Loop Left Join  (cost=0.58..18.34 rows=1 width=216) (actual time=0.102..0.135 rows=13 loops=1)
+               Buffers: shared hit=34
+               ->  Nested Loop Left Join  (cost=0.31..9.98 rows=1 width=168) (actual time=0.094..0.117 rows=13 loops=1)
+                     Buffers: shared hit=31
+                     ->  Hash Right Join  (cost=0.03..1.65 rows=1 width=160) (actual time=0.081..0.085 rows=13 loops=1)
+                           Hash Cond: (rf.refund_id = r.refund_id)
+                           Buffers: shared hit=1
+                           ->  Seq Scan on refunds rf  (cost=0.00..1.44 rows=44 width=16) (actual time=0.005..0.007 rows=44 loops=1)
+                                 Buffers: shared hit=1
+                           ->  Hash  (cost=0.02..0.02 rows=1 width=152) (actual time=0.054..0.054 rows=13 loops=1)
+                                 Buckets: 1024  Batches: 1  Memory Usage: 11kB
+                                 ->  CTE Scan on in_range r  (cost=0.00..0.02 rows=1 width=152) (actual time=0.033..0.046 rows=13 loops=1)
+                     ->  Index Scan using payments_pkey on payments p  (cost=0.27..8.29 rows=1 width=16) (actual time=0.002..0.002 rows=1 loops=13)
+                           Index Cond: (payment_id = r.payment_id)
+                           Buffers: shared hit=30
+               ->  Index Scan using journal_entries_pkey on journal_entries x  (cost=0.28..8.29 rows=1 width=16) (actual time=0.001..0.001 rows=0 loops=13)
+                     Index Cond: (entry_id = r.reverses_entry_id)
+                     Buffers: shared hit=3
+         ->  Aggregate  (cost=0.06..0.09 rows=1 width=216) (actual time=0.011..0.012 rows=1 loops=1)
+               InitPlan 4 (returns $4)
+                 ->  CTE Scan on opening  (cost=0.00..0.02 rows=1 width=8) (actual time=0.000..0.000 rows=1 loops=1)
+               ->  CTE Scan on in_range r_1  (cost=0.00..0.02 rows=1 width=16) (actual time=0.000..0.001 rows=13 loops=1)
+ Planning:
+   Buffers: shared hit=399
+ Planning Time: 2.030 ms
+ Execution Time: 0.863 ms
+(79 rows)
+
+=== R3 fn_report_monthly_performance()
+                                                                          QUERY PLAN                                                                          
+--------------------------------------------------------------------------------------------------------------------------------------------------------------
+ WindowAgg  (cost=272.36..4185.30 rows=6748 width=108) (actual time=5.301..5.328 rows=2 loops=1)
+   Buffers: shared hit=122
+   ->  Merge Left Join  (cost=272.36..490.77 rows=6748 width=204) (actual time=3.763..3.990 rows=2 loops=1)
+         Merge Cond: ((g.g)::date = ((date_trunc('month'::text, (e.created_at AT TIME ZONE 'Asia/Kolkata'::text)))::date))
+         Buffers: shared hit=53
+         ->  Merge Left Join  (cost=153.60..237.76 rows=3033 width=112) (actual time=1.293..1.370 rows=2 loops=1)
+               Merge Cond: ((g.g)::date = ((date_trunc('month'::text, (p_1.created_at AT TIME ZONE 'Asia/Kolkata'::text)))::date))
+               Buffers: shared hit=16
+               ->  Merge Left Join  (cost=124.80..150.76 rows=1605 width=88) (actual time=0.856..0.869 rows=2 loops=1)
+                     Merge Cond: (((g.g)::date) = cap.month)
+                     Buffers: shared hit=10
+                     ->  Sort  (cost=85.91..88.41 rows=1000 width=48) (actual time=0.447..0.454 rows=2 loops=1)
+                           Sort Key: ((g.g)::date)
+                           Sort Method: quicksort  Memory: 25kB
+                           Buffers: shared hit=4
+                           ->  Hash Left Join  (cost=13.24..36.08 rows=1000 width=48) (actual time=0.437..0.445 rows=2 loops=1)
+                                 Hash Cond: ((g.g)::date = ref.month)
+                                 Buffers: shared hit=4
+                                 ->  Nested Loop  (cost=10.39..30.42 rows=1000 width=8) (actual time=0.373..0.376 rows=2 loops=1)
+                                       Buffers: shared hit=3
+                                       ->  Aggregate  (cost=10.38..10.41 rows=1 width=8) (actual time=0.361..0.361 rows=1 loops=1)
+                                             Buffers: shared hit=3
+                                             ->  Seq Scan on orders o  (cost=0.00..6.69 rows=369 width=8) (actual time=0.009..0.049 rows=369 loops=1)
+                                                   Buffers: shared hit=3
+                                       ->  Function Scan on generate_series g  (cost=0.01..10.01 rows=1000 width=8) (actual time=0.009..0.009 rows=2 loops=1)
+                                 ->  Hash  (cost=2.60..2.60 rows=20 width=44) (actual time=0.056..0.058 rows=2 loops=1)
+                                       Buckets: 1024  Batches: 1  Memory Usage: 9kB
+                                       Buffers: shared hit=1
+                                       ->  Subquery Scan on ref  (cost=2.00..2.60 rows=20 width=44) (actual time=0.048..0.050 rows=2 loops=1)
+                                             Buffers: shared hit=1
+                                             ->  HashAggregate  (cost=2.00..2.40 rows=20 width=44) (actual time=0.047..0.048 rows=2 loops=1)
+                                                   Group Key: (date_trunc('month'::text, (r.processed_at AT TIME ZONE 'Asia/Kolkata'::text)))::date
+                                                   Batches: 1  Memory Usage: 24kB
+                                                   Buffers: shared hit=1
+                                                   ->  Seq Scan on refunds r  (cost=0.00..1.77 rows=30 width=12) (actual time=0.009..0.032 rows=30 loops=1)
+                                                         Filter: (status = 'processed'::text)
+                                                         Rows Removed by Filter: 14
+                                                         Buffers: shared hit=1
+                     ->  Sort  (cost=38.89..39.70 rows=321 width=44) (actual time=0.404..0.406 rows=2 loops=1)
+                           Sort Key: cap.month
+                           Sort Method: quicksort  Memory: 25kB
+                           Buffers: shared hit=6
+                           ->  Subquery Scan on cap  (cost=15.90..25.53 rows=321 width=44) (actual time=0.384..0.388 rows=2 loops=1)
+                                 Buffers: shared hit=6
+                                 ->  HashAggregate  (cost=15.90..22.32 rows=321 width=44) (actual time=0.384..0.387 rows=2 loops=1)
+                                       Group Key: (date_trunc('month'::text, (p.captured_at AT TIME ZONE 'Asia/Kolkata'::text)))::date
+                                       Batches: 1  Memory Usage: 37kB
+                                       Buffers: shared hit=6
+                                       ->  Seq Scan on payments p  (cost=0.00..13.31 rows=345 width=12) (actual time=0.005..0.305 rows=345 loops=1)
+                                             Filter: (status = 'captured'::text)
+                                             Rows Removed by Filter: 33
+                                             Buffers: shared hit=6
+               ->  GroupAggregate  (cost=28.80..42.97 rows=378 width=28) (actual time=0.434..0.495 rows=2 loops=1)
+                     Group Key: ((date_trunc('month'::text, (p_1.created_at AT TIME ZONE 'Asia/Kolkata'::text)))::date)
+                     Buffers: shared hit=6
+                     ->  Sort  (cost=28.80..29.74 rows=378 width=12) (actual time=0.361..0.388 rows=378 loops=1)
+                           Sort Key: ((date_trunc('month'::text, (p_1.created_at AT TIME ZONE 'Asia/Kolkata'::text)))::date)
+                           Sort Method: quicksort  Memory: 39kB
+                           Buffers: shared hit=6
+                           ->  Seq Scan on payments p_1  (cost=0.00..12.62 rows=378 width=12) (actual time=0.004..0.262 rows=378 loops=1)
+                                 Buffers: shared hit=6
+         ->  GroupAggregate  (cost=118.76..146.83 rows=445 width=100) (actual time=2.464..2.611 rows=2 loops=1)
+               Group Key: ((date_trunc('month'::text, (e.created_at AT TIME ZONE 'Asia/Kolkata'::text)))::date)
+               Buffers: shared hit=37
+               ->  Sort  (cost=118.76..119.97 rows=484 width=30) (actual time=2.301..2.358 rows=900 loops=1)
+                     Sort Key: ((date_trunc('month'::text, (e.created_at AT TIME ZONE 'Asia/Kolkata'::text)))::date)
+                     Sort Method: quicksort  Memory: 78kB
+                     Buffers: shared hit=37
+                     ->  Hash Join  (cost=32.86..97.18 rows=484 width=30) (actual time=0.458..2.023 rows=900 loops=1)
+                           Hash Cond: (l.entry_id = e.entry_id)
+                           Buffers: shared hit=37
+                           ->  Hash Join  (cost=1.27..60.68 rows=484 width=34) (actual time=0.027..0.787 rows=900 loops=1)
+                                 Hash Cond: (l.account_id = a.account_id)
+                                 Buffers: shared hit=24
+                                 ->  Seq Scan on ledger_lines l  (cost=0.00..50.42 rows=2742 width=26) (actual time=0.004..0.252 rows=2742 loops=1)
+                                       Buffers: shared hit=23
+                                 ->  Hash  (cost=1.23..1.23 rows=3 width=24) (actual time=0.013..0.014 rows=3 loops=1)
+                                       Buckets: 1024  Batches: 1  Memory Usage: 9kB
+                                       Buffers: shared hit=1
+                                       ->  Seq Scan on accounts a  (cost=0.00..1.23 rows=3 width=24) (actual time=0.004..0.008 rows=3 loops=1)
+                                             Filter: (code = ANY ('{COMMISSION_REVENUE,GST_PAYABLE,GATEWAY_FEE_EXPENSE}'::text[]))
+                                             Rows Removed by Filter: 14
+                                             Buffers: shared hit=1
+                           ->  Hash  (cost=21.26..21.26 rows=826 width=16) (actual time=0.406..0.406 rows=826 loops=1)
+                                 Buckets: 1024  Batches: 1  Memory Usage: 47kB
+                                 Buffers: shared hit=13
+                                 ->  Seq Scan on journal_entries e  (cost=0.00..21.26 rows=826 width=16) (actual time=0.004..0.216 rows=826 loops=1)
+                                       Buffers: shared hit=13
+ Planning:
+   Buffers: shared hit=290
+ Planning Time: 2.213 ms
+ Execution Time: 5.480 ms
+(92 rows)
+
+=== R4 fn_report_vendor_refund_risk()
+                                                                                   QUERY PLAN                                                                                    
+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ Subquery Scan on fn_report_vendor_refund_risk  (cost=88.47..88.62 rows=12 width=137) (actual time=1.275..1.285 rows=12 loops=1)
+   Buffers: shared hit=17
+   ->  Sort  (cost=88.47..88.50 rows=12 width=138) (actual time=1.273..1.280 rows=12 loops=1)
+         Sort Key: (fn_round_half_up((pv.refunded)::bigint, '10000'::bigint, (pv.sales)::bigint)) DESC NULLS LAST, v.vendor_id
+         Sort Method: quicksort  Memory: 26kB
+         Buffers: shared hit=17
+         ->  WindowAgg  (cost=78.54..88.26 rows=12 width=138) (actual time=1.238..1.267 rows=12 loops=1)
+               Buffers: shared hit=17
+               ->  Sort  (cost=78.54..78.57 rows=12 width=226) (actual time=1.229..1.236 rows=12 loops=1)
+                     Sort Key: ((pv.sales >= '100000'::numeric)), (fn_round_half_up((pv.refunded)::bigint, '10000'::bigint, (pv.sales)::bigint)) DESC
+                     Sort Method: quicksort  Memory: 26kB
+                     Buffers: shared hit=17
+                     ->  Hash Left Join  (cost=74.07..78.32 rows=12 width=226) (actual time=1.179..1.221 rows=12 loops=1)
+                           Hash Cond: (v.vendor_id = pv.vendor_id)
+                           Buffers: shared hit=17
+                           ->  Seq Scan on vendors v  (cost=0.00..1.12 rows=12 width=33) (actual time=0.008..0.010 rows=12 loops=1)
+                                 Buffers: shared hit=1
+                           ->  Hash  (cost=73.92..73.92 rows=12 width=184) (actual time=1.119..1.124 rows=10 loops=1)
+                                 Buckets: 1024  Batches: 1  Memory Usage: 9kB
+                                 Buffers: shared hit=16
+                                 ->  Subquery Scan on pv  (cost=73.53..73.92 rows=12 width=184) (actual time=1.102..1.117 rows=10 loops=1)
+                                       Buffers: shared hit=16
+                                       ->  HashAggregate  (cost=73.53..73.80 rows=12 width=184) (actual time=1.102..1.114 rows=10 loops=1)
+                                             Group Key: pr.vendor_id
+                                             Batches: 1  Memory Usage: 32kB
+                                             Buffers: shared hit=16
+                                             ->  Hash Left Join  (cost=21.79..54.22 rows=702 width=100) (actual time=0.264..0.889 rows=720 loops=1)
+                                                   Hash Cond: ((oi.order_id = lr.order_id) AND (oi.line_no = lr.line_no))
+                                                   Buffers: shared hit=16
+                                                   ->  Hash Join  (cost=17.68..46.43 rows=702 width=32) (actual time=0.186..0.649 rows=720 loops=1)
+                                                         Hash Cond: (oi.product_id = pr.product_id)
+                                                         Buffers: shared hit=15
+                                                         ->  Hash Join  (cost=15.04..41.83 rows=702 width=32) (actual time=0.145..0.451 rows=720 loops=1)
+                                                               Hash Cond: (oi.order_id = p.order_id)
+                                                               Buffers: shared hit=14
+                                                               ->  Seq Scan on order_items oi  (cost=0.00..15.85 rows=785 width=32) (actual time=0.005..0.086 rows=785 loops=1)
+                                                                     Buffers: shared hit=8
+                                                               ->  Hash  (cost=10.73..10.73 rows=345 width=8) (actual time=0.133..0.135 rows=345 loops=1)
+                                                                     Buckets: 1024  Batches: 1  Memory Usage: 22kB
+                                                                     Buffers: shared hit=6
+                                                                     ->  Seq Scan on payments p  (cost=0.00..10.73 rows=345 width=8) (actual time=0.004..0.079 rows=345 loops=1)
+                                                                           Filter: (status = 'captured'::text)
+                                                                           Rows Removed by Filter: 33
+                                                                           Buffers: shared hit=6
+                                                         ->  Hash  (cost=1.73..1.73 rows=73 width=16) (actual time=0.032..0.033 rows=73 loops=1)
+                                                               Buckets: 1024  Batches: 1  Memory Usage: 12kB
+                                                               Buffers: shared hit=1
+                                                               ->  Seq Scan on products pr  (cost=0.00..1.73 rows=73 width=16) (actual time=0.007..0.016 rows=73 loops=1)
+                                                                     Buffers: shared hit=1
+                                                   ->  Hash  (cost=3.48..3.48 rows=42 width=92) (actual time=0.074..0.075 rows=42 loops=1)
+                                                         Buckets: 1024  Batches: 1  Memory Usage: 12kB
+                                                         Buffers: shared hit=1
+                                                         ->  Subquery Scan on lr  (cost=2.43..3.48 rows=42 width=92) (actual time=0.041..0.063 rows=42 loops=1)
+                                                               Buffers: shared hit=1
+                                                               ->  HashAggregate  (cost=2.43..3.06 rows=42 width=92) (actual time=0.041..0.057 rows=42 loops=1)
+                                                                     Group Key: r.order_id, r.line_no
+                                                                     Batches: 1  Memory Usage: 24kB
+                                                                     Buffers: shared hit=1
+                                                                     ->  Seq Scan on refunds r  (cost=0.00..1.44 rows=44 width=29) (actual time=0.004..0.009 rows=44 loops=1)
+                                                                           Buffers: shared hit=1
+ Planning:
+   Buffers: shared hit=163
+ Planning Time: 1.928 ms
+ Execution Time: 1.403 ms
+(64 rows)
+
+=== R5 fn_report_settlement_aging(2026-10-31) — outer query (inlined)
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     QUERY PLAN                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      
+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ Subquery Scan on fn_report_settlement_aging  (cost=118.15..123.16 rows=401 width=118) (actual time=4.302..4.306 rows=16 loops=1)
+   Buffers: shared hit=218
+   ->  Sort  (cost=118.15..119.15 rows=401 width=130) (actual time=4.301..4.302 rows=16 loops=1)
+         Sort Key: (GROUPING(x.category)), x.category, (GROUPING((CASE WHEN (CASE x.category WHEN 'matched'::text THEN (x.settled_on - x.event_on) WHEN 'in_transit'::text THEN ('2026-10-31'::date - x.event_on) WHEN 'overdue_missing'::text THEN x.days_overdue ELSE ('2026-10-31'::date - x.settled_on) END <= 2) THEN '0-2 d'::text WHEN (CASE x.category WHEN 'matched'::text THEN (x.settled_on - x.event_on) WHEN 'in_transit'::text THEN ('2026-10-31'::date - x.event_on) WHEN 'overdue_missing'::text THEN x.days_overdue ELSE ('2026-10-31'::date - x.settled_on) END <= 7) THEN '3-7 d'::text WHEN (CASE x.category WHEN 'matched'::text THEN (x.settled_on - x.event_on) WHEN 'in_transit'::text THEN ('2026-10-31'::date - x.event_on) WHEN 'overdue_missing'::text THEN x.days_overdue ELSE ('2026-10-31'::date - x.settled_on) END <= 30) THEN '8-30 d'::text ELSE '>30 d'::text END))) DESC, (array_position('{"0-2 d","3-7 d","8-30 d",">30 d"}'::text[], (CASE WHEN (CASE x.category WHEN 'matched'::text THEN (x.settled_on - x.event_on) WHEN 'in_transit'::text THEN ('2026-10-31'::date - x.event_on) WHEN 'overdue_missing'::text THEN x.days_overdue ELSE ('2026-10-31'::date - x.settled_on) END <= 2) THEN '0-2 d'::text WHEN (CASE x.category WHEN 'matched'::text THEN (x.settled_on - x.event_on) WHEN 'in_transit'::text THEN ('2026-10-31'::date - x.event_on) WHEN 'overdue_missing'::text THEN x.days_overdue ELSE ('2026-10-31'::date - x.settled_on) END <= 7) THEN '3-7 d'::text WHEN (CASE x.category WHEN 'matched'::text THEN (x.settled_on - x.event_on) WHEN 'in_transit'::text THEN ('2026-10-31'::date - x.event_on) WHEN 'overdue_missing'::text THEN x.days_overdue ELSE ('2026-10-31'::date - x.settled_on) END <= 30) THEN '8-30 d'::text ELSE '>30 d'::text END)))
+         Sort Method: quicksort  Memory: 26kB
+         Buffers: shared hit=218
+         ->  MixedAggregate  (cost=0.25..100.81 rows=401 width=130) (actual time=4.264..4.282 rows=16 loops=1)
+               Hash Key: x.category, CASE WHEN (CASE x.category WHEN 'matched'::text THEN (x.settled_on - x.event_on) WHEN 'in_transit'::text THEN ('2026-10-31'::date - x.event_on) WHEN 'overdue_missing'::text THEN x.days_overdue ELSE ('2026-10-31'::date - x.settled_on) END <= 2) THEN '0-2 d'::text WHEN (CASE x.category WHEN 'matched'::text THEN (x.settled_on - x.event_on) WHEN 'in_transit'::text THEN ('2026-10-31'::date - x.event_on) WHEN 'overdue_missing'::text THEN x.days_overdue ELSE ('2026-10-31'::date - x.settled_on) END <= 7) THEN '3-7 d'::text WHEN (CASE x.category WHEN 'matched'::text THEN (x.settled_on - x.event_on) WHEN 'in_transit'::text THEN ('2026-10-31'::date - x.event_on) WHEN 'overdue_missing'::text THEN x.days_overdue ELSE ('2026-10-31'::date - x.settled_on) END <= 30) THEN '8-30 d'::text ELSE '>30 d'::text END
+               Hash Key: x.category
+               Group Key: ()
+               Batches: 1  Memory Usage: 72kB
+               Buffers: shared hit=218
+               ->  Function Scan on fn_reconciliation_report x  (cost=0.25..10.25 rows=1000 width=100) (actual time=4.023..4.100 rows=377 loops=1)
+                     Buffers: shared hit=218
+ Planning:
+   Buffers: shared hit=42
+ Planning Time: 0.628 ms
+ Execution Time: 4.359 ms
+(18 rows)
+
+=== R5 inner plan: fn_reconciliation_report has a pinned search_path, so it is not
+    inlined; auto_explain prints the plan of the statement it runs (LOG lines below)
+LOAD
+SET
+SET
+SET
+SET
+SET
+SET
+psql:db/reports/explain_reports.sql:40: LOG:  duration: 2.427 ms  plan:
+Query Text: 
+  WITH ev AS (                       -- what we expect the gateway to settle
+    SELECT 'payment'::text AS record_type, p.gateway_ref, p.payment_id, NULL::bigint AS refund_id,
+           p.amount_paise AS expected_paise, (p.captured_at AT TIME ZONE 'Asia/Kolkata')::date AS event_on
+      FROM payments p WHERE p.status = 'captured'
+    UNION ALL
+    SELECT 'refund', r.gateway_ref, NULL, r.refund_id,
+           r.amount_paise, (r.processed_at AT TIME ZONE 'Asia/Kolkata')::date
+      FROM refunds r WHERE r.status = 'processed'
+  ), ev_asof AS (
+    SELECT * FROM ev WHERE event_on <= p_as_of
+  ), st AS (                         -- what the gateway reported, with its posting if any
+    SELECT s.*, je.entry_id AS posted_entry_id
+      FROM gateway_settlements s
+      LEFT JOIN journal_entries je ON je.settlement_id = s.settlement_id
+     WHERE s.settled_on <= p_as_of
+  )
+  SELECT CASE WHEN st.settlement_id IS NULL
+              THEN CASE WHEN p_as_of <= e.event_on + 2 THEN 'in_transit' ELSE 'overdue_missing' END
+              WHEN st.record_type = e.record_type AND st.gross_paise = e.expected_paise THEN 'matched'
+              ELSE 'amount_mismatch' END,
+         CASE WHEN st.settlement_id IS NULL
+              THEN CASE WHEN p_as_of <= e.event_on + 2 THEN 'expected by ' || (e.event_on + 2)
+                        ELSE 'not settled; expected on ' || (e.event_on + 2) END
+              WHEN st.record_type <> e.record_type
+              THEN 'reported as ' || st.record_type || ', recorded as ' || e.record_type
+              WHEN st.gross_paise <> e.expected_paise
+              THEN 'reported ' || fn_inr(st.gross_paise) || ', expected ' || fn_inr(e.expected_paise)
+              ELSE 'ok' END,
+         e.record_type, e.gateway_ref, e.payment_id, e.refund_id, st.settlement_id,
+         e.event_on, e.event_on + 2, st.settled_on,
+         e.expected_paise, st.gross_paise, st.fee_paise,
+         CASE WHEN st.settlement_id IS NULL AND p_as_of > e.event_on + 2 THEN p_as_of - (e.event_on + 2) END,
+         st.posted_entry_id
+    FROM ev_asof e
+    LEFT JOIN st ON st.gateway_ref = e.gateway_ref
+  UNION ALL
+  SELECT 'unknown_reference',
+         CASE WHEN EXISTS (SELECT 1 FROM payments p WHERE p.gateway_ref = st.gateway_ref AND p.status <> 'captured')
+              THEN 'reference belongs to a payment that is not captured'
+              WHEN EXISTS (SELECT 1 FROM ev WHERE ev.gateway_ref = st.gateway_ref)
+              THEN 'payment/refund recorded after the as-of date'
+              ELSE 'no payment or refund has this reference' END,
+         st.record_type, st.gateway_ref, NULL, NULL, st.settlement_id,
+         NULL, NULL, st.settled_on, NULL, st.gross_paise, st.fee_paise, NULL, st.posted_entry_id
+    FROM st
+   WHERE NOT EXISTS (SELECT 1 FROM ev_asof e WHERE e.gateway_ref = st.gateway_ref)
+   ORDER BY 1, 8, 10, 4
+
+Query Parameters: $1 = '2026-10-31'
+Sort  (cost=1921.52..1922.29 rows=310 width=200) (actual rows=377 loops=1)
+  Sort Key: (CASE WHEN (st.settlement_id IS NULL) THEN CASE WHEN ($1 <= (e.event_on + 2)) THEN 'in_transit'::text ELSE 'overdue_missing'::text END WHEN ((st.record_type = e.record_type) AND (st.gross_paise = e.expected_paise)) THEN 'matched'::text ELSE 'amount_mismatch'::text END), e.event_on, st.settled_on, e.gateway_ref
+  Sort Method: quicksort  Memory: 75kB
+  Buffers: shared hit=31
+  CTE ev
+    ->  Append  (cost=0.00..16.02 rows=375 width=75) (actual rows=375 loops=1)
+          Buffers: shared hit=7
+          ->  Seq Scan on payments p  (cost=0.00..12.45 rows=345 width=75) (actual rows=345 loops=1)
+                Filter: (status = 'captured'::text)
+                Rows Removed by Filter: 33
+                Buffers: shared hit=6
+          ->  Seq Scan on refunds r  (cost=0.00..1.70 rows=30 width=76) (actual rows=30 loops=1)
+                Filter: (status = 'processed'::text)
+                Rows Removed by Filter: 14
+                Buffers: shared hit=1
+  CTE ev_asof
+    ->  CTE Scan on ev  (cost=0.00..8.44 rows=125 width=92) (actual rows=375 loops=1)
+          Filter: (event_on <= $1)
+          Buffers: shared hit=7
+  CTE st
+    ->  Hash Right Join  (cost=10.95..34.39 rows=275 width=66) (actual rows=357 loops=1)
+          Hash Cond: (je.settlement_id = s.settlement_id)
+          Buffers: shared hit=18
+          ->  Seq Scan on journal_entries je  (cost=0.00..21.26 rows=826 width=16) (actual rows=826 loops=1)
+                Buffers: shared hit=13
+          ->  Hash  (cost=9.46..9.46 rows=119 width=58) (actual rows=357 loops=1)
+                Buckets: 1024  Batches: 1  Memory Usage: 42kB
+                Buffers: shared hit=5
+                ->  Seq Scan on gateway_settlements s  (cost=0.00..9.46 rows=119 width=58) (actual rows=357 loops=1)
+                      Filter: (settled_on <= $1)
+                      Buffers: shared hit=5
+  ->  Append  (cost=4.06..1849.84 rows=310 width=200) (actual rows=377 loops=1)
+        Buffers: shared hit=31
+        ->  Hash Right Join  (cost=4.06..109.92 rows=172 width=200) (actual rows=375 loops=1)
+              Hash Cond: (st.gateway_ref = e.gateway_ref)
+              Buffers: shared hit=25
+              ->  CTE Scan on st  (cost=0.00..5.50 rows=275 width=100) (actual rows=357 loops=1)
+                    Buffers: shared hit=18
+              ->  Hash  (cost=2.50..2.50 rows=125 width=92) (actual rows=375 loops=1)
+                    Buckets: 1024  Batches: 1  Memory Usage: 38kB
+                    Buffers: shared hit=7
+                    ->  CTE Scan on ev_asof e  (cost=0.00..2.50 rows=125 width=92) (actual rows=375 loops=1)
+                          Buffers: shared hit=7
+        ->  Hash Anti Join  (cost=4.06..1738.36 rows=138 width=200) (actual rows=2 loops=1)
+              Hash Cond: (st_1.gateway_ref = e_1.gateway_ref)
+              Buffers: shared hit=6
+              ->  CTE Scan on st st_1  (cost=0.00..5.50 rows=275 width=100) (actual rows=357 loops=1)
+              ->  Hash  (cost=2.50..2.50 rows=125 width=32) (actual rows=375 loops=1)
+                    Buckets: 1024  Batches: 1  Memory Usage: 26kB
+                    ->  CTE Scan on ev_asof e_1  (cost=0.00..2.50 rows=125 width=32) (actual rows=375 loops=1)
+              SubPlan 5
+                ->  Seq Scan on payments p_1  (cost=0.00..10.73 rows=33 width=15) (actual rows=33 loops=1)
+                      Filter: (status <> 'captured'::text)
+                      Rows Removed by Filter: 345
+                      Buffers: shared hit=6
+              SubPlan 7
+                ->  CTE Scan on ev ev_1  (cost=0.00..7.50 rows=375 width=32) (actual rows=375 loops=1)
+psql:db/reports/explain_reports.sql:40: LOG:  duration: 3.777 ms  plan:
+Query Text: SELECT count(*) AS reconciliation_rows FROM fn_reconciliation_report('2026-10-31');
+Aggregate  (cost=12.75..12.76 rows=1 width=8) (actual rows=1 loops=1)
+  Buffers: shared hit=42
+  ->  Function Scan on fn_reconciliation_report  (cost=0.25..10.25 rows=1000 width=0) (actual rows=377 loops=1)
+        Buffers: shared hit=42
+ reconciliation_rows 
+---------------------
+                 377
+(1 row)
+
+RESET
+SET
+=== R6 fn_report_vendor_payables(3)
+                                                                                  QUERY PLAN                                                                                  
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ Nested Loop Left Join  (cost=40.08..78.47 rows=1 width=166) (actual time=0.284..0.287 rows=1 loops=1)
+   Buffers: shared hit=42
+   ->  Nested Loop Left Join  (cost=40.08..74.90 rows=1 width=197) (actual time=0.261..0.263 rows=1 loops=1)
+         Buffers: shared hit=40
+         ->  Seq Scan on vendors v  (cost=0.00..1.15 rows=1 width=37) (actual time=0.005..0.006 rows=1 loops=1)
+               Filter: (vendor_id = '3'::bigint)
+               Rows Removed by Filter: 11
+               Buffers: shared hit=1
+         ->  GroupAggregate  (cost=40.08..73.73 rows=1 width=168) (actual time=0.254..0.255 rows=1 loops=1)
+               Buffers: shared hit=39
+               ->  Hash Join  (cost=40.08..66.05 rows=161 width=27) (actual time=0.070..0.234 rows=59 loops=1)
+                     Hash Cond: (e.entry_id = l.entry_id)
+                     Buffers: shared hit=39
+                     ->  Seq Scan on journal_entries e  (cost=0.00..21.26 rows=826 width=17) (actual time=0.002..0.065 rows=826 loops=1)
+                           Buffers: shared hit=13
+                     ->  Hash  (cost=38.07..38.07 rows=161 width=26) (actual time=0.063..0.064 rows=59 loops=1)
+                           Buckets: 1024  Batches: 1  Memory Usage: 12kB
+                           Buffers: shared hit=26
+                           ->  Nested Loop  (cost=9.70..38.07 rows=161 width=26) (actual time=0.016..0.054 rows=59 loops=1)
+                                 Buffers: shared hit=26
+                                 ->  Seq Scan on accounts a  (cost=0.00..1.25 rows=1 width=16) (actual time=0.002..0.003 rows=1 loops=1)
+                                       Filter: ((owner_type = 'vendor'::text) AND (vendor_id = '3'::bigint))
+                                       Rows Removed by Filter: 16
+                                       Buffers: shared hit=1
+                                 ->  Bitmap Heap Scan on ledger_lines l  (cost=9.70..34.99 rows=183 width=26) (actual time=0.013..0.044 rows=59 loops=1)
+                                       Recheck Cond: (account_id = a.account_id)
+                                       Heap Blocks: exact=23
+                                       Buffers: shared hit=25
+                                       ->  Bitmap Index Scan on ledger_lines_account_entry_idx  (cost=0.00..9.65 rows=183 width=0) (actual time=0.007..0.007 rows=59 loops=1)
+                                             Index Cond: (account_id = a.account_id)
+                                             Buffers: shared hit=2
+   ->  GroupAggregate  (cost=0.00..3.52 rows=1 width=136) (actual time=0.015..0.015 rows=1 loops=1)
+         Buffers: shared hit=2
+         ->  Seq Scan on payouts p  (cost=0.00..3.15 rows=10 width=29) (actual time=0.004..0.009 rows=10 loops=1)
+               Filter: (vendor_id = '3'::bigint)
+               Rows Removed by Filter: 82
+               Buffers: shared hit=2
+ Planning:
+   Buffers: shared hit=164
+ Planning Time: 1.233 ms
+ Execution Time: 0.346 ms
+(41 rows)
+
+=== Index experiment on ledger_lines_account_entry_idx (account_id, entry_id)
+    (a) R2 for one vendor and (b) the body of fn_vendor_balance(3) — the balance read
+    inside every payout / refund workflow — first WITHOUT the index (BEGIN … DROP INDEX
+    … ROLLBACK, so it is restored), then WITH it.
+BEGIN
+DROP INDEX
+--- (a) R2 without the index
+                                                                         QUERY PLAN                                                                         
+------------------------------------------------------------------------------------------------------------------------------------------------------------
+ Sort  (cost=127.87..127.88 rows=3 width=216) (actual time=0.924..0.931 rows=15 loops=1)
+   Sort Key: ('0'::bigint)
+   Sort Method: quicksort  Memory: 27kB
+   Buffers: shared hit=71
+   CTE s
+     ->  Subquery Scan on vs  (cost=94.56..101.40 rows=161 width=135) (actual time=0.640..0.740 rows=59 loops=1)
+           Buffers: shared hit=37
+           ->  WindowAgg  (cost=94.56..100.60 rows=161 width=131) (actual time=0.633..0.701 rows=59 loops=1)
+                 Buffers: shared hit=37
+                 ->  Sort  (cost=94.56..94.96 rows=161 width=117) (actual time=0.619..0.625 rows=59 loops=1)
+                       Sort Key: e.created_at, e.entry_id, l.line_no
+                       Sort Method: quicksort  Memory: 32kB
+                       Buffers: shared hit=37
+                       ->  Hash Join  (cost=62.69..88.66 rows=161 width=117) (actual time=0.465..0.600 rows=59 loops=1)
+                             Hash Cond: (e.entry_id = l.entry_id)
+                             Buffers: shared hit=37
+                             ->  Seq Scan on journal_entries e  (cost=0.00..21.26 rows=826 width=95) (actual time=0.004..0.067 rows=826 loops=1)
+                                   Buffers: shared hit=13
+                             ->  Hash  (cost=60.68..60.68 rows=161 width=30) (actual time=0.454..0.456 rows=59 loops=1)
+                                   Buckets: 1024  Batches: 1  Memory Usage: 12kB
+                                   Buffers: shared hit=24
+                                   ->  Hash Join  (cost=1.27..60.68 rows=161 width=30) (actual time=0.017..0.445 rows=59 loops=1)
+                                         Hash Cond: (l.account_id = a.account_id)
+                                         Buffers: shared hit=24
+                                         ->  Seq Scan on ledger_lines l  (cost=0.00..50.42 rows=2742 width=30) (actual time=0.002..0.186 rows=2742 loops=1)
+                                               Buffers: shared hit=23
+                                         ->  Hash  (cost=1.25..1.25 rows=1 width=16) (actual time=0.008..0.008 rows=1 loops=1)
+                                               Buckets: 1024  Batches: 1  Memory Usage: 9kB
+                                               Buffers: shared hit=1
+                                               ->  Seq Scan on accounts a  (cost=0.00..1.25 rows=1 width=16) (actual time=0.004..0.005 rows=1 loops=1)
+                                                     Filter: ((owner_type = 'vendor'::text) AND (vendor_id = '3'::bigint))
+                                                     Rows Removed by Filter: 16
+                                                     Buffers: shared hit=1
+   CTE in_range
+     ->  WindowAgg  (cost=4.04..4.06 rows=1 width=160) (actual time=0.016..0.021 rows=13 loops=1)
+           ->  Sort  (cost=4.04..4.04 rows=1 width=152) (actual time=0.013..0.014 rows=13 loops=1)
+                 Sort Key: s.created_at, s.entry_id, s.line_no
+                 Sort Method: quicksort  Memory: 26kB
+                 ->  CTE Scan on s  (cost=0.00..4.03 rows=1 width=152) (actual time=0.004..0.008 rows=13 loops=1)
+                       Filter: ((on_date >= '2026-10-01'::date) AND (on_date <= '2026-10-15'::date))
+                       Rows Removed by Filter: 46
+   CTE opening
+     ->  Aggregate  (cost=3.90..3.91 rows=1 width=8) (actual time=0.798..0.798 rows=1 loops=1)
+           Buffers: shared hit=37
+           ->  CTE Scan on s s_1  (cost=0.00..3.62 rows=54 width=16) (actual time=0.642..0.789 rows=27 loops=1)
+                 Filter: (on_date < '2026-10-01'::date)
+                 Rows Removed by Filter: 32
+                 Buffers: shared hit=37
+   ->  Append  (cost=0.00..18.48 rows=3 width=216) (actual time=0.802..0.915 rows=15 loops=1)
+         Buffers: shared hit=71
+         ->  CTE Scan on opening o  (cost=0.00..0.03 rows=1 width=216) (actual time=0.801..0.802 rows=1 loops=1)
+               Buffers: shared hit=37
+         ->  Nested Loop Left Join  (cost=0.58..18.34 rows=1 width=216) (actual time=0.067..0.099 rows=13 loops=1)
+               Buffers: shared hit=34
+               ->  Nested Loop Left Join  (cost=0.31..9.98 rows=1 width=168) (actual time=0.062..0.084 rows=13 loops=1)
+                     Buffers: shared hit=31
+                     ->  Hash Right Join  (cost=0.03..1.65 rows=1 width=160) (actual time=0.051..0.056 rows=13 loops=1)
+                           Hash Cond: (rf.refund_id = r.refund_id)
+                           Buffers: shared hit=1
+                           ->  Seq Scan on refunds rf  (cost=0.00..1.44 rows=44 width=16) (actual time=0.006..0.008 rows=44 loops=1)
+                                 Buffers: shared hit=1
+                           ->  Hash  (cost=0.02..0.02 rows=1 width=152) (actual time=0.034..0.035 rows=13 loops=1)
+                                 Buckets: 1024  Batches: 1  Memory Usage: 11kB
+                                 ->  CTE Scan on in_range r  (cost=0.00..0.02 rows=1 width=152) (actual time=0.018..0.029 rows=13 loops=1)
+                     ->  Index Scan using payments_pkey on payments p  (cost=0.27..8.29 rows=1 width=16) (actual time=0.002..0.002 rows=1 loops=13)
+                           Index Cond: (payment_id = r.payment_id)
+                           Buffers: shared hit=30
+               ->  Index Scan using journal_entries_pkey on journal_entries x  (cost=0.28..8.29 rows=1 width=16) (actual time=0.000..0.000 rows=0 loops=13)
+                     Index Cond: (entry_id = r.reverses_entry_id)
+                     Buffers: shared hit=3
+         ->  Aggregate  (cost=0.06..0.09 rows=1 width=216) (actual time=0.011..0.011 rows=1 loops=1)
+               InitPlan 4 (returns $3)
+                 ->  CTE Scan on opening  (cost=0.00..0.02 rows=1 width=8) (actual time=0.000..0.001 rows=1 loops=1)
+               ->  CTE Scan on in_range r_1  (cost=0.00..0.02 rows=1 width=16) (actual time=0.000..0.001 rows=13 loops=1)
+ Planning:
+   Buffers: shared hit=32
+ Planning Time: 1.208 ms
+ Execution Time: 1.027 ms
+(78 rows)
+
+--- (b) balance query without the index
+                                                     QUERY PLAN                                                     
+--------------------------------------------------------------------------------------------------------------------
+ Aggregate  (cost=743.22..743.23 rows=1 width=32) (actual time=14.411..14.412 rows=1 loops=1)
+   Buffers: shared hit=2765
+   ->  Seq Scan on ledger_lines l  (cost=0.00..742.77 rows=59 width=10) (actual time=0.228..14.323 rows=59 loops=1)
+         Filter: (account_id = fn_vendor_payable_account('3'::bigint))
+         Rows Removed by Filter: 2683
+         Buffers: shared hit=2765
+ Planning:
+   Buffers: shared hit=3
+ Planning Time: 0.211 ms
+ Execution Time: 14.424 ms
+(10 rows)
+
+ROLLBACK
+--- (b) balance query with the index
+                                                                  QUERY PLAN                                                                   
+-----------------------------------------------------------------------------------------------------------------------------------------------
+ Aggregate  (cost=43.92..43.93 rows=1 width=32) (actual time=0.079..0.079 rows=1 loops=1)
+   Buffers: shared hit=26
+   ->  Bitmap Heap Scan on ledger_lines l  (cost=4.99..43.47 rows=59 width=10) (actual time=0.026..0.067 rows=59 loops=1)
+         Recheck Cond: (account_id = fn_vendor_payable_account('3'::bigint))
+         Heap Blocks: exact=23
+         Buffers: shared hit=26
+         ->  Bitmap Index Scan on ledger_lines_account_entry_idx  (cost=0.00..4.97 rows=59 width=0) (actual time=0.021..0.021 rows=59 loops=1)
+               Index Cond: (account_id = fn_vendor_payable_account('3'::bigint))
+               Buffers: shared hit=3
+ Planning:
+   Buffers: shared hit=20
+ Planning Time: 0.178 ms
+ Execution Time: 0.096 ms
+(13 rows)
+
+ index_still_present 
+---------------------
+                   1
+(1 row)
+
+=== Other secondary indexes on the API read paths (31_indexes.sql)
+--- customer order history: orders_customer_created_idx
+                                                                   QUERY PLAN                                                                   
+------------------------------------------------------------------------------------------------------------------------------------------------
+ Limit  (cost=7.39..7.40 rows=4 width=16) (actual time=0.035..0.036 rows=4 loops=1)
+   Buffers: shared hit=7
+   ->  Sort  (cost=7.39..7.40 rows=4 width=16) (actual time=0.034..0.034 rows=4 loops=1)
+         Sort Key: created_at DESC
+         Sort Method: quicksort  Memory: 25kB
+         Buffers: shared hit=7
+         ->  Bitmap Heap Scan on orders  (cost=4.30..7.35 rows=4 width=16) (actual time=0.027..0.029 rows=4 loops=1)
+               Recheck Cond: (customer_id = 20)
+               Heap Blocks: exact=2
+               Buffers: shared hit=7
+               ->  Bitmap Index Scan on orders_customer_created_idx  (cost=0.00..4.30 rows=4 width=0) (actual time=0.023..0.023 rows=4 loops=1)
+                     Index Cond: (customer_id = 20)
+                     Buffers: shared hit=5
+ Planning:
+   Buffers: shared hit=13
+ Planning Time: 0.075 ms
+ Execution Time: 0.046 ms
+(17 rows)
+
+--- finance refund queue: refunds_pending_idx (partial) — table is 1 page, a seq scan is expected
+                                               QUERY PLAN                                               
+--------------------------------------------------------------------------------------------------------
+ Sort  (cost=1.59..1.60 rows=4 width=16) (actual time=0.012..0.012 rows=4 loops=1)
+   Sort Key: requested_at
+   Sort Method: quicksort  Memory: 25kB
+   Buffers: shared hit=1
+   ->  Seq Scan on refunds  (cost=0.00..1.55 rows=4 width=16) (actual time=0.008..0.009 rows=4 loops=1)
+         Filter: (status = 'requested'::text)
+         Rows Removed by Filter: 40
+         Buffers: shared hit=1
+ Planning:
+   Buffers: shared hit=3
+ Planning Time: 0.055 ms
+ Execution Time: 0.019 ms
+(12 rows)
+
+--- table sizes behind these plans
+       relname       | relpages | reltuples 
+---------------------+----------+-----------
+ ledger_lines        |       23 |      2742
+ journal_entries     |       13 |       826
+ order_items         |        8 |       785
+ payments            |        6 |       378
+ gateway_settlements |        5 |       357
+ orders              |        3 |       369
+ users               |        2 |        74
+ payouts             |        2 |        92
+ accounts            |        1 |        17
+ refunds             |        1 |        44
+ vendors             |        1 |        12
+ products            |        1 |        73
+(12 rows)
+
