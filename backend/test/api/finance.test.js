@@ -157,8 +157,8 @@ test('settlement CSV import: row-level results, only exact matches posted, unkno
   assert.equal(by[7].result, 'inserted'); assert.equal(by[7].posted_entry_id, null);
   assert.equal(by[8].result, 'rejected'); assert.equal(by[8].error.sqlstate, '23514');
   assert.equal(by[9].result, 'rejected'); assert.equal(by[9].error.sqlstate, 'PRV07');
-  assert.equal(by[10].result, 'invalid');
-  assert.equal(by[11].result, 'invalid');
+  assert.equal(by[10].result, 'invalid'); assert.equal(by[10].gateway_ref, 'pay_BADDATE0001');   // reference echoed (T5)
+  assert.equal(by[11].result, 'invalid'); assert.equal(by[11].gateway_ref, 'pay_SHORT');
   assert.deepEqual(r.body.summary, { inserted: 4, duplicate: 1, conflict: 1, rejected: 2, invalid: 2, posted: 2 });
   assert.equal((await ctx.q(`SELECT 1 FROM gateway_settlements WHERE gateway_ref IN ('pay_FEETOOHIGH01','pay_FUTURE00001')`)).length, 0,
     'rejected rows were rolled back to their savepoint');

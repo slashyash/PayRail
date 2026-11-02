@@ -1,0 +1,4 @@
+gateway_ref,record_type,gross_paise,fee_paise,settled_on
+pay_S000000365,payment,1678600,33572,2026-10-31
+pay_S000000366,payment,839400,9999,2026-10-31
+pay_S000000368,payment,839400,16788,2026-10-31

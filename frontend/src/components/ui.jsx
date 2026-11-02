@@ -64,16 +64,32 @@ const BADGE = {
   requested: 'bg-amber-100 text-amber-800',
   processed: 'bg-emerald-100 text-emerald-800',
   rejected: 'bg-rose-100 text-rose-800',
+  // vendors / products (T5)
+  verified: 'bg-emerald-100 text-emerald-800',
+  pending: 'bg-amber-100 text-amber-800',
+  active: 'bg-emerald-100 text-emerald-800',
+  archived: 'bg-slate-200 text-slate-700',
+  // settlement import results and reconciliation categories (T5, DEC-009/029)
+  inserted: 'bg-emerald-100 text-emerald-800',
+  duplicate: 'bg-slate-200 text-slate-700',
+  conflict: 'bg-rose-100 text-rose-800',
+  invalid: 'bg-rose-100 text-rose-800',
+  matched: 'bg-emerald-100 text-emerald-800',
+  amount_mismatch: 'bg-rose-100 text-rose-800',
+  unknown_reference: 'bg-violet-100 text-violet-800',
+  in_transit: 'bg-sky-100 text-sky-800',
+  overdue_missing: 'bg-amber-100 text-amber-800',
 };
 export function StatusBadge({ status }) {
   return (
-    <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${BADGE[status] ?? 'bg-slate-100 text-slate-700'}`}>
+    <span className={`inline-block whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-medium ${BADGE[status] ?? 'bg-slate-100 text-slate-700'}`}>
       {String(status).replace(/_/g, ' ')}
     </span>
   );
 }
 
 export function Money({ paise, className = '' }) {
+  if (paise === null || paise === undefined) return <span className="text-slate-400">—</span>;   // e.g. SUM over no rows
   return <span className={`tabular-nums ${className}`}>{formatINR(paise)}</span>;
 }
 
@@ -90,6 +106,25 @@ export function Pager({ page, pageSize, total, onPage }) {
       </div>
     </div>
   );
+}
+
+/** small labelled value box used on the vendor/finance dashboards */
+export function Stat({ label, children, testId }) {
+  return (
+    <div className="card">
+      <p className="text-xs text-slate-500">{label}</p>
+      <p className="mt-0.5 font-semibold" data-testid={testId}>{children}</p>
+    </div>
+  );
+}
+
+/** "YYYY-MM-DD" (a DATE from the API) → "31 Oct 2026"; no time-zone shift */
+export function formatDate(d) {
+  if (!d) return '—';
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(d).slice(0, 10));
+  if (!m) return d;
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  return `${Number(m[3])} ${months[Number(m[2]) - 1]} ${m[1]}`;
 }
 
 export function formatDateTime(iso) {

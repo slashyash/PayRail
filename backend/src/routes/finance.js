@@ -119,7 +119,7 @@ export function financeRoutes({ db, config }) {
       }
       return out;
     });
-    for (const x of invalid) results.push({ line: x.line, result: 'invalid', errors: x.errors });
+    for (const x of invalid) results.push({ line: x.line, gateway_ref: x.gateway_ref, result: 'invalid', errors: x.errors });
     results.sort((a, b) => a.line - b.line);
     const summary = {};
     for (const x of results) summary[x.result] = (summary[x.result] || 0) + 1;

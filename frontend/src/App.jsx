@@ -12,7 +12,15 @@ import OrderDetail from './pages/OrderDetail.jsx';
 import Orders from './pages/Orders.jsx';
 import Pay from './pages/Pay.jsx';
 import Refunds from './pages/Refunds.jsx';
-import StaffHome from './pages/StaffHome.jsx';
+import FinancePayouts from './pages/finance/Payouts.jsx';
+import Reconciliation from './pages/finance/Reconciliation.jsx';
+import FinanceRefunds from './pages/finance/Refunds.jsx';
+import Settlements from './pages/finance/Settlements.jsx';
+import TrialBalance from './pages/finance/TrialBalance.jsx';
+import Products from './pages/vendor/Products.jsx';
+import VendorPayouts from './pages/vendor/Payouts.jsx';
+import Statement from './pages/vendor/Statement.jsx';
+import VendorHome from './pages/vendor/VendorHome.jsx';
 import { useAuth } from './state/auth.jsx';
 
 function RequireAuth() {
@@ -36,7 +44,7 @@ function RequireRole({ role }) {
 
 function Home() {
   const { user } = useAuth();
-  const home = { customer: '/shop', finance_admin: '/finance/gateway' }[user.role] ?? '/staff';
+  const home = { customer: '/shop', vendor_admin: '/vendor', finance_admin: '/finance/refunds' }[user.role] ?? '/login';
   return <Navigate to={home} replace />;
 }
 
@@ -59,10 +67,20 @@ export default function App() {
             <Route path="orders/:orderId/pay" element={<Pay />} />
             <Route path="refunds" element={<Refunds />} />
           </Route>
+          <Route element={<RequireRole role="vendor_admin" />}>
+            <Route path="vendor" element={<VendorHome />} />
+            <Route path="vendor/products" element={<Products />} />
+            <Route path="vendor/statement" element={<Statement />} />
+            <Route path="vendor/payouts" element={<VendorPayouts />} />
+          </Route>
           <Route element={<RequireRole role="finance_admin" />}>
+            <Route path="finance/refunds" element={<FinanceRefunds />} />
+            <Route path="finance/payouts" element={<FinancePayouts />} />
+            <Route path="finance/settlements" element={<Settlements />} />
+            <Route path="finance/reconciliation" element={<Reconciliation />} />
+            <Route path="finance/ledger" element={<TrialBalance />} />
             <Route path="finance/gateway" element={<GatewaySimulator />} />
           </Route>
-          <Route path="staff" element={<StaffHome />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
       </Route>

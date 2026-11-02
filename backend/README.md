@@ -64,6 +64,8 @@ PAYRAIL_REBUILD_VIA_DOCKER=1 npm run test:concurrency
 | `GET /api/finance/refunds?status&vendor_id`, `POST …/:id/approve`, `POST …/:id/reject` | finance_admin | `fn_approve_refund`, `fn_reject_refund` |
 | `GET /api/finance/payouts`, `POST /api/finance/payouts/:id/complete` `{outcome, bank_utr?}` | finance_admin | `fn_complete_payout` |
 | `POST /api/finance/settlements/import` (text/csv or `{rows}`), `GET /api/finance/settlements` | finance_admin | `fn_record_settlement` (one transaction, SAVEPOINT per row) |
+
+Import response: `{ summary: {inserted, duplicate, conflict, rejected, invalid, posted}, results: [{line, gateway_ref, result, settlement_id?, posted_entry_id?, error?, errors?}] }` — `invalid` rows echo `gateway_ref` when their first cell is a plain reference (T5). Sample files: `samples/settlements/`.
 | `POST /api/finance/reconcile` `{as_of?}`, `GET /api/finance/reconciliation?as_of&category&gateway_ref` | finance_admin | `fn_reconcile`, `fn_reconciliation_report` |
 | `GET /api/finance/trial-balance`, `/vendors`, `/journal-entries?…`, `/orders/:id`, `/payments?status&order_id` | finance_admin | `v_account_balances`, ledger, payments |
 
@@ -83,3 +85,11 @@ and delivers it through the **same** handler as `POST /api/gateway/callback`. Co
 `src/config.js` env · `src/db.js` pool (as `payrail_app`, int8/date kept as strings, `withTransaction` on one client) ·
 `src/errors.js` SQLSTATE mapping · `src/validate.js` Zod helpers · `src/auth.js` login/JWT/guards ·
 `src/gateway.js` HMAC + simulator · `src/settlementCsv.js` bounded CSV parser · `src/routes/*` · `test/api/*` · `test/concurrency/*`.
+
+## Troubleshooting
+- **Login / `/api/health` returns 500 while `docker compose ps` says healthy:** the `payrail_app` password in the database
+  differs from `.env` — the Docker volume was first created with an older `APP_DB_PASSWORD` (the init hook runs only on an
+  empty volume). Non-destructive fix, then restart the backend:
+  `docker compose exec -T db sh -c 'psql -U postgres -d payrail -c "ALTER ROLE payrail_app PASSWORD '\''$APP_DB_PASSWORD'\''"'`
+- **`configuration: JWT_SECRET must be set`:** `.env` still has the `CHANGE…` placeholders; put `openssl rand -hex 32`
+  output in `JWT_SECRET` and `GATEWAY_WEBHOOK_SECRET`.

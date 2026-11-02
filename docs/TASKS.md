@@ -10,7 +10,7 @@ Target dates are a suggested schedule against the GL §7 submission date (15 Nov
 | T2 | Stored workflows, seed, database correctness | T1 | 5–6 Nov | DONE |
 | T3 | Backend and authentication | T2 | 7–8 Nov | DONE |
 | T4 | Customer workflow UI | T3 | 9–10 Nov | DONE (2026-11-02) |
-| T5 | Vendor and finance workflow UI | T3 (parallel with T4) | 10–11 Nov | TODO |
+| T5 | Vendor and finance workflow UI | T3 (parallel with T4) | 10–11 Nov | DONE (2026-11-02) |
 | T6 | SQL reports and DBMS evidence | T2 (SQL), T4/T5 (UI exposure) | 12 Nov | TODO |
 | T7 | Integration, regression tests, demo reliability | T4, T5, T6 | 13–14 Nov | TODO |
 | T8 | README, final design PDF, DEMO, VIVA | T7 (contributions need team input) | 14–15 Nov | TODO |
@@ -61,7 +61,7 @@ Files: `backend/src/` (`app.js`, `server.js`, `config.js`, `db.js`, `errors.js`,
 ## T4 — Customer UI — DONE (2026-11-02)
 Files: `frontend/` (`package.json` + lockfile: react 19.3.1, react-router-dom 7.18.5, vite 8.3.5, tailwindcss 4.3.3, @playwright/test 1.63.0; `npm audit` 0 vulnerabilities), `src/lib/{api,money,idempotency,useApi}.js`, `src/state/{auth,cart}.jsx`, `src/components/{Layout,ui}.jsx`, `src/pages/{Login,Catalogue,Cart,Pay,Orders,OrderDetail,Refunds,StaffHome}.jsx`, `e2e/customer.spec.js`, `playwright.config.js`, `README.md`; root `.gitignore` (+ `test-results/`, `playwright-report/`). DEC-037.
 - [x] Vite + React + Tailwind scaffold, `/api` dev proxy, fetch wrapper with `{error}` + SQLSTATE display, BigInt money helpers (unit tests)
-- [x] Login / session restore (401 → login; server down → Retry, token kept); role routing (vendor/finance → placeholder until T5)
+- [x] Login / session restore (401 → login; server down → Retry, token kept); role routing (vendor/finance placeholder replaced in T5)
 - [x] Storefront: search (debounced), vendor, price range (exact rupee parsing), sort, paging — all from `GET /api/products`
 - [x] Cart per customer: aggregate per product, cap 100, grouped by vendor, multi-vendor notice; order request carries ids + quantities only
 - [x] Payment page: attempt with Idempotency-Key tied to (order, method) in sessionStorage → redirect to the simulated gateway's hosted checkout (`GatewayCheckout.jsx`, test UPI / card / bank, cancel) → back to the shop with the result from the database; attempts table. No approve/decline controls for customers (DEC-038)
@@ -71,9 +71,21 @@ Files: `frontend/` (`package.json` + lockfile: react 19.3.1, react-router-dom 7.
 - [x] Browser smoke test on a dedicated rebuilt `payrail_e2e`: 4 tests after the DEC-038 revision (T4-09); mutation checks (T4-04, T4-10)
 **Acceptance (PI Task 4):** seeded customer completes a real two-vendor purchase and a refund request through the UI ✔; order status and ledger verified (one balanced capture entry with per-vendor / commission / GST credits equal to the line split; refund request posts nothing; after finance approval the derived status is `partially refunded` and a balanced refund entry credits clearing 10050) ✔ (T4-03, T4-05); declined payment at the gateway page, and (finance simulator) wrong-amount, 3× duplicate and late failure callbacks demonstrable ✔ (T4-09); invalid refund refused by the database (`PRR01`) ✔; same key reused on retry after a lost response → one attempt / one refund ✔; no mock arrays (every screen reads the API) ✔. Not yet run on a team Mac (see TEST_EVIDENCE "Not run yet").
 
-## T5 — Vendor & finance UI — TODO
-Vendor: products CRUD/archive/delete-draft, balance + running statement, payout request/history. Finance: refund queue, payout paid/failed, settlement CSV upload (bounded, row-level validation, duplicates), reconciliation categories. Sample CSVs.
-**Acceptance:** as PI Task 5.
+## T5 — Vendor & finance UI — DONE (2026-11-02)
+Files: `frontend/src/pages/vendor/{VendorHome,Products,Statement,Payouts}.jsx`, `frontend/src/pages/finance/{Refunds,Payouts,Settlements,Reconciliation,TrialBalance,LedgerEntries}.jsx`, `frontend/src/{App.jsx,components/Layout.jsx,components/ui.jsx,lib/api.js}`, `frontend/e2e/vendor-finance.spec.js` (+ finance landing in `customer.spec.js`), `samples/settlements/{01_normal,02_reupload_duplicate_conflict,03_exceptions}.csv` + `README.md`; backend: `src/settlementCsv.js` + `routes/finance.js` (invalid CSV rows echo their reference), `test/api/finance.test.js`. `StaffHome.jsx` removed. DEC-039.
+- [x] Role routing: vendor → `/vendor`, finance → `/finance/refunds`; role-specific nav
+- [x] Vendor dashboard: KYC, commission, ledger-derived balance (negative shown + explained), payouts in flight, recent sales with snapshot split
+- [x] Vendor products: create (active or draft), edit name/price, archive / reactivate, delete never-ordered product; delete of an ordered product refused by the FK (`23503`, shown)
+- [x] Vendor statement: window-function running balance, IST date filter, opening/closing balance, paging
+- [x] Vendor payouts: request with Idempotency-Key (same amount → same key; same-key replay button), browser check + demo bypass so PRF01/PRV03 are visible; history with status filter
+- [x] Finance refunds: queue (status + vendor filters), approve → shows the balanced refund entry; reject → released, nothing posted
+- [x] Finance payouts: mark paid (UTR, format-checked) / failed (confirm) → shows request + reversal entries; "failed again" demo shows exactly-once; vendor balances panel
+- [x] Settlement import: file picker or paste, bounded (256 KB client check; server ≤ 1000 rows), per-row results (inserted/posted, duplicate, conflict, rejected + SQLSTATE, invalid + reasons), imported rows list
+- [x] Reconciliation: as-of date (server demo default), run (newly posted), category summary + explanations, filter by category / reference, paging
+- [x] Ledger: trial balance with global Σ D = Σ C check, latest entries by type
+- [x] Sample CSVs for normal, duplicate/conflict and exceptional cases (results observed)
+- [x] Browser tests: 5 new (catalogue CRUD; payout incl. replay, overspend, failed-once, paid; unverified + negative vendor; customer → finance refund approve/reject; settlement samples + reconciliation incl. unknown-ref revisit)
+**Acceptance (PI Task 5):** customer → finance refund ✔ and vendor → finance payout ✔ end to end in the UI (T5-03); failed payouts restore funds exactly once ✔ (UI + ledger: 1 reversal, retry posts nothing, T5-03/T5-06); unverified vendor (`PRV03`) and overspending (`PRF01`, incl. a negative-balance vendor) refused ✔; catalogue create/edit/archive/reactivate/delete-draft and refused delete of referenced history ✔; settlement imports persist and explain each case; only exact matches are posted ✔ (T5-04). Not yet run on a team Mac.
 
 ## T6 — Reports and DBMS evidence — TODO
 R1 trial balance · R2 vendor statement (window running balance) · R3 monthly performance · R4 vendor refund risk · R5 reconciliation & aging · R6 vendor payable/payout summary. Fixtures, correct aggregation grain, filters, EXPLAIN (ANALYZE, BUFFERS) on seeded DB, feature matrix.
