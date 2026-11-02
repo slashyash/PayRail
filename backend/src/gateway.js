@@ -107,6 +107,64 @@ export function gatewayService({ db, config }) {
   return { handleCallback, simulate };
 }
 
+// ---------------------------------------------------------------------------
+// Hosted checkout of the simulated gateway (DEC-038).
+// The customer is redirected to the gateway's checkout page and pays with a
+// TEST instrument; the GATEWAY (this code), not the customer, decides the
+// outcome from that instrument — like a real gateway's test mode. Only the
+// published test instruments are accepted, so nobody types real card data,
+// and nothing entered here is stored or logged.
+export const TEST_INSTRUMENTS = {
+  upi: [
+    { vpa: 'success@payrail', outcome: 'success', label: 'UPI ID that is approved' },
+    { vpa: 'failure@payrail', outcome: 'failure', label: 'UPI ID that is declined' },
+  ],
+  card: [
+    { number: '4111111111111111', outcome: 'success', label: 'Visa test card that is approved' },
+    { number: '4000000000000002', outcome: 'failure', label: 'Visa test card that is declined' },
+  ],
+  netbanking: [
+    { bank: 'PAYRAIL_TEST_BANK', outcome: 'success', label: 'PayRail Test Bank (approves)' },
+    { bank: 'PAYRAIL_FAIL_BANK', outcome: 'failure', label: 'PayRail Failing Bank (declines)' },
+  ],
+};
+
+export const checkoutSchema = z.discriminatedUnion('action', [
+  z.object({ action: z.literal('cancel') }).strict(),
+  z.object({
+    action: z.literal('pay'),
+    instrument: z.union([
+      z.object({ vpa: z.string().trim().toLowerCase().regex(/^[a-z0-9._-]{2,64}@[a-z]{2,32}$/, 'must look like name@bank') }).strict(),
+      z.object({
+        number: z.string().transform((s) => s.replace(/[\s-]/g, '')).pipe(z.string().regex(/^[0-9]{12,19}$/, 'card number: 12–19 digits')),
+        expiry: z.string().regex(/^(0[1-9]|1[0-2])\/[0-9]{2}$/, 'expiry: MM/YY'),
+        cvv: z.string().regex(/^[0-9]{3}$/, 'CVV: 3 digits'),
+      }).strict(),
+      z.object({ bank: z.string().max(40) }).strict(),
+    ]),
+  }).strict(),
+]);
+
+/**
+ * The gateway's decision for a checkout submission.
+ * Returns { outcome: 'success'|'failure', reason } or throws 422 for a
+ * non-test instrument or one that does not match the attempt's method.
+ */
+export function decideCheckout(method, body) {
+  if (body.action === 'cancel') return { outcome: 'failure', reason: 'cancelled by the customer at the gateway' };
+  const ins = body.instrument;
+  const kind = 'vpa' in ins ? 'upi' : 'number' in ins ? 'card' : 'netbanking';
+  if (kind !== method) {
+    throw new ApiError(422, 'invalid_input', `this payment attempt was started for ${method}; enter ${method} details`);
+  }
+  const hit = TEST_INSTRUMENTS[method].find((t) =>
+    (t.vpa && t.vpa === ins.vpa) || (t.number && t.number === ins.number) || (t.bank && t.bank === ins.bank));
+  if (!hit) {
+    throw new ApiError(422, 'invalid_input', 'simulated gateway: use one of the listed test instruments (no real payment details)');
+  }
+  return { outcome: hit.outcome, reason: hit.outcome === 'success' ? 'approved by the issuer (simulated)' : 'declined by the issuer (simulated)' };
+}
+
 export function publicPayment(p) {
   if (!p) return p;
   const { idempotency_key, ...rest } = p;

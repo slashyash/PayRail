@@ -71,6 +71,10 @@ test('role guards: each role is refused on the others\' routes', async () => {
     ['finance', 'get', '/api/vendor/me'],
     ['finance', 'post', '/api/orders'],
     ['vendor1', 'post', '/api/mock-gateway/payments/1/simulate'],
+    ['customer1', 'post', '/api/mock-gateway/payments/1/simulate'],
+    ['finance', 'post', '/api/mock-gateway/checkout/1'],
+    ['vendor1', 'get', '/api/mock-gateway/checkout/1'],
+    ['customer1', 'get', '/api/finance/payments'],
   ];
   for (const [user, m, url] of cases) {
     const r = await ctx.as(user)[m](url).send({});
