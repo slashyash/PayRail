@@ -72,15 +72,21 @@ BEGIN
   END IF;
 END $$;
 
+-- The two trigger functions below are SECURITY DEFINER: a deferred trigger
+-- fires at COMMIT, i.e. AFTER the SECURITY DEFINER workflow function has
+-- returned, so it runs with the privileges of the committing login
+-- (payrail_app), which may not execute fn_assert_entry_balanced. Running the
+-- check as the owner makes it independent of who commits (found in Task 2,
+-- DEC-026). They only read and raise; they change nothing.
 CREATE FUNCTION trg_journal_entries_balanced() RETURNS trigger
-LANGUAGE plpgsql SET search_path = payrail, pg_temp AS $$
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = payrail, pg_temp AS $$
 BEGIN
   PERFORM fn_assert_entry_balanced(NEW.entry_id);
   RETURN NULL;
 END $$;
 
 CREATE FUNCTION trg_ledger_lines_balanced() RETURNS trigger
-LANGUAGE plpgsql SET search_path = payrail, pg_temp AS $$
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = payrail, pg_temp AS $$
 BEGIN
   PERFORM fn_assert_entry_balanced(NEW.entry_id);
   RETURN NULL;
