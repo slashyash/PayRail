@@ -182,6 +182,23 @@ export function financeRoutes({ db, config }) {
     res.json({ items: rows });
   });
 
+  // payment attempts (newest first) — used by the finance gateway simulator screen
+  r.get('/payments', async (req, res) => {
+    const q = parseQuery(req, {
+      ...pageQuery,
+      status: z.enum(['initiated', 'captured', 'failed']).optional(),
+      order_id: idString.optional(),
+    });
+    const { rows } = await db.query(
+      `SELECT p.payment_id, p.order_id, o.customer_id, p.amount_paise, p.method, p.status, p.gateway_ref,
+              p.created_at, p.captured_at, count(*) OVER () AS total_count
+         FROM payments p JOIN orders o USING (order_id)
+        WHERE ($1::text IS NULL OR p.status = $1) AND ($2::bigint IS NULL OR p.order_id = $2)
+        ORDER BY p.payment_id DESC LIMIT $3 OFFSET $4`,
+      [q.status ?? null, q.order_id ?? null, q.page_size, offset(q)]);
+    res.json(pageOf(rows, q));
+  });
+
   r.get('/journal-entries', async (req, res) => {
     const q = parseQuery(req, {
       ...pageQuery,

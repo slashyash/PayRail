@@ -7,6 +7,8 @@
 node_modules/
 dist/
 coverage/
+test-results/
+playwright-report/
 *.log
 
 # OS / editor noise

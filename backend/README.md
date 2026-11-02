@@ -54,7 +54,8 @@ PAYRAIL_REBUILD_VIA_DOCKER=1 npm run test:concurrency
 | `POST /api/orders` `{items:[{product_id,quantity}]}` | customer | `fn_place_order` |
 | `GET /api/orders?status`, `GET /api/orders/:id` | customer | `v_order_summary`, `v_order_line_allocation` |
 | `POST /api/orders/:id/payments` `{method}` + key | customer | `fn_initiate_payment` |
-| `POST /api/mock-gateway/payments/:id/simulate` `{outcome, amount_paise?, deliveries?}` | customer (owner) | signs and delivers a callback |
+| `GET /api/mock-gateway/checkout/:id`, `POST /api/mock-gateway/checkout/:id` `{action:'pay', instrument}` \| `{action:'cancel'}` | customer (owner) | hosted checkout: the gateway decides the outcome from a TEST instrument and sends one signed callback (DEC-038) |
+| `POST /api/mock-gateway/payments/:id/simulate` `{outcome, amount_paise?, deliveries?}` | finance_admin | fault injection: signs and delivers callbacks (DEC-038) |
 | `POST /api/gateway/callback` (HMAC headers) | gateway | `fn_capture_payment` / `fn_fail_payment` |
 | `POST /api/orders/:id/refunds` `{line_no, amount_paise, reason}` + key, `GET /api/refunds` | customer | `fn_request_refund` |
 | `GET /api/vendor/me`, `/statement?from&to`, `/sales`, `/payouts` | vendor_admin | `fn_vendor_balance`, `v_vendor_statement` |
@@ -64,10 +65,16 @@ PAYRAIL_REBUILD_VIA_DOCKER=1 npm run test:concurrency
 | `GET /api/finance/payouts`, `POST /api/finance/payouts/:id/complete` `{outcome, bank_utr?}` | finance_admin | `fn_complete_payout` |
 | `POST /api/finance/settlements/import` (text/csv or `{rows}`), `GET /api/finance/settlements` | finance_admin | `fn_record_settlement` (one transaction, SAVEPOINT per row) |
 | `POST /api/finance/reconcile` `{as_of?}`, `GET /api/finance/reconciliation?as_of&category&gateway_ref` | finance_admin | `fn_reconcile`, `fn_reconciliation_report` |
-| `GET /api/finance/trial-balance`, `/vendors`, `/journal-entries?…`, `/orders/:id` | finance_admin | `v_account_balances`, ledger |
+| `GET /api/finance/trial-balance`, `/vendors`, `/journal-entries?…`, `/orders/:id`, `/payments?status&order_id` | finance_admin | `v_account_balances`, ledger, payments |
 
-## Mock gateway (DEC-033)
-The simulator builds the event the gateway would send (`pay_S<id>` / `pay_F<id>`, stable per payment and outcome),
+## Mock gateway (DEC-033, DEC-038)
+**Customer path (hosted checkout).** The shop redirects the customer to the gateway's page; the customer pays with a
+published test instrument and the **gateway** decides: UPI `success@payrail` / `failure@payrail`, card
+`4111 1111 1111 1111` (approved) / `4000 0000 0000 0002` (declined) with any `MM/YY` and 3-digit CVV, net banking
+`PAYRAIL_TEST_BANK` / `PAYRAIL_FAIL_BANK`; `cancel` = failure. Any other instrument → 422 (no real payment details are
+accepted, stored or logged). The amount is the attempt's amount — the customer cannot send one or choose the outcome.
+
+**Finance path (fault injection).** The simulator builds the event the gateway would send (`pay_S<id>` / `pay_F<id>`, stable per payment and outcome),
 signs it with `GATEWAY_WEBHOOK_SECRET` (`X-PayRail-Timestamp`, `X-PayRail-Signature: v1=HMAC-SHA256(ts.body)`, ±5 min)
 and delivers it through the **same** handler as `POST /api/gateway/callback`. Controls: `outcome` success/failure,
 `amount_paise` (wrong amount → 409 `amount_mismatch`, nothing changes), `deliveries` 1–3 (duplicates are harmless).

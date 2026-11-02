@@ -1,6 +1,6 @@
 # PayRail — Requirements Traceability
 
-Paths are **planned** until the Status column says otherwise (updated after Task 3, 2026-11-02). Status: `TODO`, `IN_PROGRESS`, `DONE` (acceptance evidence recorded in TEST_EVIDENCE), `BLOCKED`.
+Paths are **planned** until the Status column says otherwise (updated after Task 4, 2026-11-02). Status: `TODO`, `IN_PROGRESS`, `DONE` (acceptance evidence recorded in TEST_EVIDENCE), `BLOCKED`.
 Sources: **GL** = course guidelines PDF, **DBD** = database design PDF, **APD** = application design PDF, **PI** = project instructions, **DEC** = docs/DECISIONS.md.
 
 ## A. Course requirements (mandatory)
@@ -12,12 +12,12 @@ Sources: **GL** = course guidelines PDF, **DBD** = database design PDF, **APD** 
 | CR-03 | Normalization examined and justified | GL §3B | AUDIT §5 → final PDF | review | viva | TODO |
 | CR-04 | ~8–12 meaningful relations | GL §4 | 12 relations (DBD §6 + DEC-021 columns) | catalog count T1-05 | — | DONE |
 | CR-05 | ≥500 records | GL §4 | `db/seed/seed.sql` (via workflow functions) | `29_seed.sql`; 5,769 rows (T2-07) | — | DONE |
-| CR-06 | ≥3 end-to-end workflows (transaction / reporting / integrity) | GL §4 | W1–W4 (see DC-W*) | API tests ✔ (T3-01); UI tests T4/T5 | DEMO.md | IN_PROGRESS (DB + API done) |
+| CR-06 | ≥3 end-to-end workflows (transaction / reporting / integrity) | GL §4 | W1–W4 (see DC-W*) | API tests ✔ (T3-01); customer UI browser test ✔ (T4-03); vendor/finance UI T5 | DEMO.md | IN_PROGRESS (DB + API done; UI: W1 + W3 customer side) |
 | CR-07 | ≥5 non-trivial SQL queries | GL §4 | `db/reports/r1…r6` | fixture tests `db/tests/40_reports.sql` | finance UI reports | TODO |
 | CR-08 | ≥3 additional DBMS features | GL §4 | transactions, triggers, stored functions, views, indexes | feature matrix (T6) | DEMO.md | TODO |
 | CR-09 | Insert / modify / delete where appropriate | GL §3D | product CRUD (DEC-014): `backend/src/routes/vendor.js` | `backend/test/api/vendor.test.js` (create/update/archive/reactivate/delete draft/409 on referenced) ✔ | vendor UI (T5) | IN_PROGRESS (API done) |
-| CR-10 | Search, filter, retrieval; multi-relation ops; reports | GL §3D | `GET /api/products?q…`, order history, statement, reconciliation; named reports T6 | `customer.test.js`, `vendor.test.js`, `finance.test.js` ✔ | UI | IN_PROGRESS |
-| CR-11 | Front end ↔ backend ↔ RDBMS | GL §3D | `frontend/` ↔ `backend/` ↔ PostgreSQL | integration (T7) | live demo | TODO |
+| CR-10 | Search, filter, retrieval; multi-relation ops; reports | GL §3D | `GET /api/products?q…`, order history, statement, reconciliation; named reports T6; storefront search/vendor/price/sort/paging, order + refund history with status filters (`frontend/src/pages/Catalogue.jsx`, `Orders.jsx`, `Refunds.jsx`) | `customer.test.js`, `vendor.test.js`, `finance.test.js` ✔; `frontend/e2e/customer.spec.js` ✔ | UI | IN_PROGRESS |
+| CR-11 | Front end ↔ backend ↔ RDBMS | GL §3D | `frontend/` ↔ `backend/` ↔ PostgreSQL | customer path: Playwright against real backend + seeded DB ✔ (T4-03); all roles + clean install T7 | live demo | IN_PROGRESS |
 | CR-12 | Repo: app + config, DB scripts, sample data | GL §6 | whole repo | clean-install rehearsal (T7) | — | TODO |
 | CR-13 | README: title, description, names/IDs, stack, setup, workflows, **actual** contributions | GL §6 | `README.md` | team review | — | TODO |
 | CR-14 | Final DB design PDF ≤ 5 pages, consistent with implementation | GL §6 | `docs/design/` source + PDF | page count + schema diff | — | TODO |
@@ -37,12 +37,12 @@ Sources: **GL** = course guidelines PDF, **DBD** = database design PDF, **APD** 
 | DC-07 | Payout reserves funds at request; failed transfer reversed once | APD W2, DEC-008 | `23_wf_payouts.sql` | `22_payouts.sql`, concurrency ✔ | DONE (DB) |
 | DC-08 | Late refund may make vendor negative; later sales recover; no overspend | DBD §3 | balance check under account lock in `fn_request_payout` | `22_payouts.sql`, `29_seed.sql`, concurrency ✔ | DONE (DB) |
 | DC-09 | Reconciliation keeps unknown refs, no fabricated postings | DBD D9, DEC-009 | `fn_record_settlement`, `fn_reconcile`, `fn_reconciliation_report`; Report 5 (T6) | `23_settlements.sql` ✔; sample CSVs (T5) | IN_PROGRESS (DB done) |
-| DC-W1 | Checkout + payment capture | APD W1 | customer UI (T4) → `POST /api/orders`, `/api/orders/:id/payments`, `/api/mock-gateway/…/simulate` → `/api/gateway/callback` → `fn_place_order`, `fn_initiate_payment`, `fn_capture_payment`/`fn_fail_payment` | `customer.test.js`, `gateway.test.js` ✔; UI T4 | IN_PROGRESS (API done) |
+| DC-W1 | Checkout + payment capture | APD W1 | customer UI (T4) → `POST /api/orders`, `/api/orders/:id/payments`, `/api/mock-gateway/…/simulate` → `/api/gateway/callback` → `fn_place_order`, `fn_initiate_payment`, `fn_capture_payment`/`fn_fail_payment` | `customer.test.js`, `gateway.test.js` ✔; UI `frontend/src/pages/{Catalogue,Cart,Pay,GatewayCheckout}.jsx` → `frontend/e2e/customer.spec.js` ✔ (T4-09) | DONE |
 | DC-W2 | Vendor payout | APD W2 | vendor/finance UI (T5) → `POST /api/vendor/payouts`, `POST /api/finance/payouts/:id/complete` → `fn_request_payout`, `fn_complete_payout` | `vendor.test.js`, `finance.test.js` ✔; UI T5 | IN_PROGRESS (API done) |
-| DC-W3 | Refund request + approval | APD W3 | customer/finance UI → `POST /api/orders/:id/refunds`, `POST /api/finance/refunds/:id/approve|reject` → refund functions | `customer.test.js`, `finance.test.js` ✔; UI T4/T5 | IN_PROGRESS (API done) |
+| DC-W3 | Refund request + approval | APD W3 | customer/finance UI → `POST /api/orders/:id/refunds`, `POST /api/finance/refunds/:id/approve|reject` → refund functions | `customer.test.js`, `finance.test.js` ✔; customer UI `OrderDetail.jsx`/`Refunds.jsx` ✔ (T4-03); finance queue UI T5 | IN_PROGRESS (customer side DONE; finance UI T5) |
 | DC-W4 | Settlement import, reconciliation, reports | APD W4 | finance UI (T5) → `POST /api/finance/settlements/import` (CSV/JSON), `/api/finance/reconcile`, `/api/finance/reconciliation`, `/api/finance/trial-balance`; named reports T6 | `finance.test.js` ✔; UI T5, reports T6 | IN_PROGRESS (API done) |
 | DC-10 | Auth with hashed passwords, JWT | APD §2, DEC-002, DEC-035 | `users.password_hash`, `backend/src/auth.js` | `auth.test.js` ✔ | DONE (API) |
-| DC-11 | Mock gateway: callbacks with retries + controllable outcome, settlement CSV | APD §3, DEC-033, DEC-036 | `backend/src/gateway.js`, `routes/gateway.js`, `settlementCsv.js` | `gateway.test.js`, `customer.test.js`, `finance.test.js` ✔; sample CSV files T5 | IN_PROGRESS (API done) |
+| DC-11 | Mock gateway: callbacks with retries + controllable outcome, settlement CSV | APD §3, DEC-033, DEC-036 | `backend/src/gateway.js`, `routes/gateway.js`, `settlementCsv.js`; hosted checkout for customers + finance-only fault injection (DEC-038): `GatewayCheckout.jsx`, `GatewaySimulator.jsx` | `gateway.test.js`, `customer.test.js` (hosted checkout), `finance.test.js` ✔; Playwright ✔ (T4-09); sample CSV files T5 | IN_PROGRESS (gateway done; CSV samples T5) |
 
 ## C. Financial correctness rules (PI 1–12)
 

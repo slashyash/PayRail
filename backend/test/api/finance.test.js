@@ -192,7 +192,7 @@ test('unknown reference is posted by a later reconcile once its payment is captu
     .send({ rows: [{ gateway_ref: ref, record_type: 'payment', gross_paise: p.amount_paise, fee_paise: '0', settled_on: today }] });
   assert.equal(imp.body.results[0].result, 'inserted');
   assert.equal(imp.body.results[0].posted_entry_id, null, 'not captured yet → stored, not posted');
-  await ctx.as('customer6').post(`/api/mock-gateway/payments/${p.payment_id}/simulate`).send({ outcome: 'success' });
+  await ctx.as('finance').post(`/api/mock-gateway/payments/${p.payment_id}/simulate`).send({ outcome: 'success' });
   const rec = await ctx.as('finance').post('/api/finance/reconcile').send({ as_of: today });
   assert.equal(rec.status, 200);
   const matched = rec.body.categories.find((c) => c.category === 'matched');

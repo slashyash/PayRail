@@ -72,14 +72,21 @@ export async function start() {
 const emailOf = (u) => (u.includes('@') ? u : `${u}@payrail.demo`);
 export const key = () => crypto.randomUUID();
 
-/** place an order and capture it through the API + mock gateway; returns { order, payment } */
+/** test instruments the simulated gateway approves (DEC-038) */
+export const APPROVE = {
+  upi: { vpa: 'success@payrail' },
+  card: { number: '4111 1111 1111 1111', expiry: '12/30', cvv: '123' },
+  netbanking: { bank: 'PAYRAIL_TEST_BANK' },
+};
+
+/** place an order and pay it at the mock gateway's hosted checkout; returns { order, payment } */
 export async function paidOrder(ctx, customer, items, method = 'upi') {
   await ctx.login(customer);
   const o = await ctx.as(customer).post('/api/orders').send({ items });
   if (o.status !== 201) throw new Error(`order: ${o.status} ${JSON.stringify(o.body)}`);
   const p = await ctx.as(customer).post(`/api/orders/${o.body.order_id}/payments`).set('Idempotency-Key', key()).send({ method });
   if (p.status !== 201) throw new Error(`payment: ${p.status} ${JSON.stringify(p.body)}`);
-  const s = await ctx.as(customer).post(`/api/mock-gateway/payments/${p.body.payment_id}/simulate`).send({ outcome: 'success' });
+  const s = await ctx.as(customer).post(`/api/mock-gateway/checkout/${p.body.payment_id}`).send({ action: 'pay', instrument: APPROVE[method] });
   if (s.body.payment?.status !== 'captured') throw new Error(`capture: ${JSON.stringify(s.body)}`);
   return { order: o.body, payment: s.body.payment };
 }

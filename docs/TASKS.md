@@ -9,7 +9,7 @@ Target dates are a suggested schedule against the GL §7 submission date (15 Nov
 | T1 | Reproducible foundation and core database | T0 | 3 Nov | DONE |
 | T2 | Stored workflows, seed, database correctness | T1 | 5–6 Nov | DONE |
 | T3 | Backend and authentication | T2 | 7–8 Nov | DONE |
-| T4 | Customer workflow UI | T3 | 9–10 Nov | TODO |
+| T4 | Customer workflow UI | T3 | 9–10 Nov | DONE (2026-11-02) |
 | T5 | Vendor and finance workflow UI | T3 (parallel with T4) | 10–11 Nov | TODO |
 | T6 | SQL reports and DBMS evidence | T2 (SQL), T4/T5 (UI exposure) | 12 Nov | TODO |
 | T7 | Integration, regression tests, demo reliability | T4, T5, T6 | 13–14 Nov | TODO |
@@ -58,9 +58,18 @@ Files: `backend/src/` (`app.js`, `server.js`, `config.js`, `db.js`, `errors.js`,
 - [x] API integration tests against a rebuilt, seeded test database: 32 tests (T3-01…T3-04)
 **Acceptance (PI Task 3):** API tests exercise the database ✔, all four workflows ✔, invalid input ✔, unauthenticated / forged / expired tokens ✔, cross-customer and cross-vendor access ✔, finance-only actions ✔ (T3-01). Financial endpoints never accept client prices, commission rates, ownership or balances (strict schemas, actor from the JWT; tested) ✔. Real HTTP server smoke test ✔ (T3-05). No secrets committed (only `.env.example` placeholders; the server refuses `CHANGE…` values) ✔. Verified on Parth's Mac with Docker: server + login, API tests 32/32, concurrency tests 12/12 (T3-07, T3-08, T3-11; ran on Node v26 — Node 22 run still pending).
 
-## T4 — Customer UI — TODO
-Catalogue search/filter, cart, multi-vendor checkout, simulated payment (success/fail/duplicate), order history/detail, per-line refund request; loading/empty/error states; idempotency key reuse on retry.
-**Acceptance:** seeded customer completes a real multi-vendor purchase and refund request; DB/ledger changes verified; failed/duplicate callback and invalid refund demonstrable; no mock arrays.
+## T4 — Customer UI — DONE (2026-11-02)
+Files: `frontend/` (`package.json` + lockfile: react 19.3.1, react-router-dom 7.18.5, vite 8.3.5, tailwindcss 4.3.3, @playwright/test 1.63.0; `npm audit` 0 vulnerabilities), `src/lib/{api,money,idempotency,useApi}.js`, `src/state/{auth,cart}.jsx`, `src/components/{Layout,ui}.jsx`, `src/pages/{Login,Catalogue,Cart,Pay,Orders,OrderDetail,Refunds,StaffHome}.jsx`, `e2e/customer.spec.js`, `playwright.config.js`, `README.md`; root `.gitignore` (+ `test-results/`, `playwright-report/`). DEC-037.
+- [x] Vite + React + Tailwind scaffold, `/api` dev proxy, fetch wrapper with `{error}` + SQLSTATE display, BigInt money helpers (unit tests)
+- [x] Login / session restore (401 → login; server down → Retry, token kept); role routing (vendor/finance → placeholder until T5)
+- [x] Storefront: search (debounced), vendor, price range (exact rupee parsing), sort, paging — all from `GET /api/products`
+- [x] Cart per customer: aggregate per product, cap 100, grouped by vendor, multi-vendor notice; order request carries ids + quantities only
+- [x] Payment page: attempt with Idempotency-Key tied to (order, method) in sessionStorage → redirect to the simulated gateway's hosted checkout (`GatewayCheckout.jsx`, test UPI / card / bank, cancel) → back to the shop with the result from the database; attempts table. No approve/decline controls for customers (DEC-038)
+- [x] Finance-only gateway simulator (`GatewaySimulator.jsx`, `/finance/gateway`): success / failure / 3× duplicate / wrong-amount callbacks for any attempt; backend: hosted-checkout endpoints, `simulate` restricted to finance, `GET /api/finance/payments` (DEC-038)
+- [x] Order history (status filter, paging), order detail (lines with refunded / pending / refundable, payments, refunds), per-line refund form (key tied to line+amount+reason, same-key replay button, demo bypass of the browser check), My refunds
+- [x] Loading, empty, validation and failure states (incl. backend down via proxy 502)
+- [x] Browser smoke test on a dedicated rebuilt `payrail_e2e`: 4 tests after the DEC-038 revision (T4-09); mutation checks (T4-04, T4-10)
+**Acceptance (PI Task 4):** seeded customer completes a real two-vendor purchase and a refund request through the UI ✔; order status and ledger verified (one balanced capture entry with per-vendor / commission / GST credits equal to the line split; refund request posts nothing; after finance approval the derived status is `partially refunded` and a balanced refund entry credits clearing 10050) ✔ (T4-03, T4-05); declined payment at the gateway page, and (finance simulator) wrong-amount, 3× duplicate and late failure callbacks demonstrable ✔ (T4-09); invalid refund refused by the database (`PRR01`) ✔; same key reused on retry after a lost response → one attempt / one refund ✔; no mock arrays (every screen reads the API) ✔. Not yet run on a team Mac (see TEST_EVIDENCE "Not run yet").
 
 ## T5 — Vendor & finance UI — TODO
 Vendor: products CRUD/archive/delete-draft, balance + running statement, payout request/history. Finance: refund queue, payout paid/failed, settlement CSV upload (bounded, row-level validation, duplicates), reconciliation categories. Sample CSVs.

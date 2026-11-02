@@ -1,10 +1,10 @@
 // W1 checkout + payment (through the mock gateway) and W3 refund requests, as a customer.
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { start, key, paidOrder } from './_setup.js';
+import { start, key, paidOrder, APPROVE } from './_setup.js';
 
 let ctx;
-before(async () => { ctx = await start(); await ctx.login('customer1', 'customer2', 'vendor1'); });
+before(async () => { ctx = await start(); await ctx.login('customer1', 'customer2', 'vendor1', 'finance'); });
 after(async () => ctx.stop());
 
 const entriesFor = (paymentId) => ctx.q('SELECT entry_id FROM journal_entries WHERE payment_id = $1', [paymentId]);
@@ -108,11 +108,11 @@ test('payment attempt: key required, amount derived, concurrent duplicates retur
   assert.equal(conflict.body.error.code, 'idempotency_conflict');
 });
 
-test('capture through the mock gateway: duplicate callbacks post exactly once', async () => {
+test('capture through the mock gateway (finance fault injection): duplicate callbacks post exactly once', async () => {
   const o = (await ctx.as('customer1').post('/api/orders').send({
     items: [{ product_id: '3', quantity: 1 }, { product_id: '13', quantity: 2 }] })).body;
   const p = (await ctx.as('customer1').post(`/api/orders/${o.order_id}/payments`).set('Idempotency-Key', key()).send({ method: 'upi' })).body;
-  const s = await ctx.as('customer1').post(`/api/mock-gateway/payments/${p.payment_id}/simulate`).send({ outcome: 'success', deliveries: 3 });
+  const s = await ctx.as('finance').post(`/api/mock-gateway/payments/${p.payment_id}/simulate`).send({ outcome: 'success', deliveries: 3 });
   assert.equal(s.status, 200);
   assert.deepEqual(s.body.deliveries.map((d) => d.status), [200, 200, 200]);
   assert.equal(s.body.payment.status, 'captured');
@@ -138,22 +138,22 @@ test('capture amount mismatch is refused with no change; failed attempt cannot b
   const o = (await ctx.as('customer1').post('/api/orders').send({ items: [{ product_id: '4', quantity: 1 }] })).body;
   const p1 = (await ctx.as('customer1').post(`/api/orders/${o.order_id}/payments`).set('Idempotency-Key', key()).send({ method: 'upi' })).body;
   const wrong = (BigInt(o.total_paise) - 1n).toString();
-  const mm = await ctx.as('customer1').post(`/api/mock-gateway/payments/${p1.payment_id}/simulate`).send({ outcome: 'success', amount_paise: wrong });
+  const mm = await ctx.as('finance').post(`/api/mock-gateway/payments/${p1.payment_id}/simulate`).send({ outcome: 'success', amount_paise: wrong });
   assert.equal(mm.body.deliveries[0].status, 409);
   assert.equal(mm.body.deliveries[0].body.error.code, 'amount_mismatch');
   assert.equal(mm.body.payment.status, 'initiated');
   assert.equal((await entriesFor(p1.payment_id)).length, 0, 'nothing posted');
 
-  const f = await ctx.as('customer1').post(`/api/mock-gateway/payments/${p1.payment_id}/simulate`).send({ outcome: 'failure', deliveries: 2 });
+  const f = await ctx.as('finance').post(`/api/mock-gateway/payments/${p1.payment_id}/simulate`).send({ outcome: 'failure', deliveries: 2 });
   assert.deepEqual(f.body.deliveries.map((d) => d.status), [200, 200]);
   assert.equal(f.body.payment.status, 'failed');
-  const late = await ctx.as('customer1').post(`/api/mock-gateway/payments/${p1.payment_id}/simulate`).send({ outcome: 'success' });
+  const late = await ctx.as('finance').post(`/api/mock-gateway/payments/${p1.payment_id}/simulate`).send({ outcome: 'success' });
   assert.equal(late.body.deliveries[0].status, 409);
   assert.equal(late.body.deliveries[0].body.error.code, 'invalid_transition');
   assert.equal(late.body.payment.status, 'failed', 'a final outcome cannot be switched by a retry');
 
   const p2 = (await ctx.as('customer1').post(`/api/orders/${o.order_id}/payments`).set('Idempotency-Key', key()).send({ method: 'netbanking' })).body;
-  const ok = await ctx.as('customer1').post(`/api/mock-gateway/payments/${p2.payment_id}/simulate`).send({ outcome: 'success' });
+  const ok = await ctx.as('customer1').post(`/api/mock-gateway/checkout/${p2.payment_id}`).send({ action: 'pay', instrument: APPROVE.netbanking });
   assert.equal(ok.body.payment.status, 'captured');
   assert.equal(ok.body.order.status, 'paid');
   const det = await ctx.as('customer1').get(`/api/orders/${o.order_id}`);
@@ -166,7 +166,9 @@ test('customers cannot see or act on another customer\'s orders and payments', a
   const pay = await ctx.as('customer2').post(`/api/orders/${order.order_id}/payments`).set('Idempotency-Key', key()).send({ method: 'upi' });
   assert.equal(pay.status, 403);
   assert.equal(pay.body.error.sqlstate, 'PRA01', 'the database refuses the actor');
-  const sim = await ctx.as('customer2').post(`/api/mock-gateway/payments/${payment.payment_id}/simulate`).send({ outcome: 'failure' });
+  const view = await ctx.as('customer2').get(`/api/mock-gateway/checkout/${payment.payment_id}`);
+  assert.equal(view.status, 404);
+  const sim = await ctx.as('customer2').post(`/api/mock-gateway/checkout/${payment.payment_id}`).send({ action: 'cancel' });
   assert.equal(sim.status, 404);
   const ref = await ctx.as('customer2').post(`/api/orders/${order.order_id}/refunds`).set('Idempotency-Key', key())
     .send({ line_no: 1, amount_paise: '100', reason: 'not mine' });
@@ -224,4 +226,64 @@ test('a failed workflow call leaves nothing behind: the same key works afterward
   const good = await ctx.as('customer1').post(`/api/orders/${order.order_id}/refunds`).set('Idempotency-Key', k)
     .send({ line_no: 1, amount_paise: '100', reason: 'x' });
   assert.equal(good.status, 201, 'the failed attempt did not poison the key');
+});
+
+test('hosted checkout: the gateway decides from TEST instruments; the customer cannot pick the outcome or amount', async () => {
+  const o = (await ctx.as('customer1').post('/api/orders').send({ items: [{ product_id: '6', quantity: 2 }] })).body;
+  const p1 = (await ctx.as('customer1').post(`/api/orders/${o.order_id}/payments`).set('Idempotency-Key', key()).send({ method: 'upi' })).body;
+
+  const view = await ctx.as('customer1').get(`/api/mock-gateway/checkout/${p1.payment_id}`);
+  assert.equal(view.status, 200);
+  assert.equal(view.body.payment.amount_paise, o.total_paise);
+  assert.equal(view.body.payment.method, 'upi');
+  assert.deepEqual(view.body.test_instruments.map((t) => t.vpa), ['success@payrail', 'failure@payrail']);
+  assert.equal('idempotency_key' in view.body.payment, false);
+
+  const url = `/api/mock-gateway/checkout/${p1.payment_id}`;
+  // the outcome / amount cannot be supplied; only listed test instruments; method must match the attempt
+  for (const body of [
+    { action: 'pay', outcome: 'success', instrument: APPROVE.upi },
+    { action: 'pay', instrument: { ...APPROVE.upi, amount_paise: '1' } },
+    { action: 'approve' },
+    { action: 'pay', instrument: { vpa: 'someone@okbank' } },
+    { action: 'pay', instrument: APPROVE.card },
+    { action: 'pay', instrument: { number: '5555 5555 5555 4444', expiry: '12/30', cvv: '123' } },
+  ]) {
+    const r = await ctx.as('customer1').post(url).send(body);
+    assert.equal(r.status, 422, JSON.stringify(body));
+  }
+  assert.equal((await ctx.one('SELECT status FROM payments WHERE payment_id = $1', [p1.payment_id])).status, 'initiated');
+
+  const declined = await ctx.as('customer1').post(url).send({ action: 'pay', instrument: { vpa: 'FAILURE@payrail' } });
+  assert.equal(declined.status, 200);
+  assert.equal(declined.body.outcome, 'failure');
+  assert.equal(declined.body.payment.status, 'failed');
+  assert.equal(declined.body.order.status, 'pending_payment');
+  assert.equal((await entriesFor(p1.payment_id)).length, 0);
+  const again = await ctx.as('customer1').post(url).send({ action: 'pay', instrument: APPROVE.upi });
+  assert.equal(again.status, 409);
+  assert.equal(again.body.error.code, 'invalid_transition');
+
+  const p2 = (await ctx.as('customer1').post(`/api/orders/${o.order_id}/payments`).set('Idempotency-Key', key()).send({ method: 'card' })).body;
+  const paid = await ctx.as('customer1').post(`/api/mock-gateway/checkout/${p2.payment_id}`).send({ action: 'pay', instrument: APPROVE.card });
+  assert.equal(paid.status, 200);
+  assert.equal(paid.body.outcome, 'success');
+  assert.equal(paid.body.callback.status, 200);
+  assert.equal(paid.body.payment.status, 'captured');
+  assert.equal(paid.body.payment.amount_paise, o.total_paise);
+  assert.equal(paid.body.order.status, 'paid');
+  assert.equal((await entriesFor(p2.payment_id)).length, 1);
+
+  // cancelling at the gateway fails that attempt (and only that attempt)
+  const o2 = (await ctx.as('customer1').post('/api/orders').send({ items: [{ product_id: '7', quantity: 1 }] })).body;
+  const p3 = (await ctx.as('customer1').post(`/api/orders/${o2.order_id}/payments`).set('Idempotency-Key', key()).send({ method: 'netbanking' })).body;
+  const cancel = await ctx.as('customer1').post(`/api/mock-gateway/checkout/${p3.payment_id}`).send({ action: 'cancel' });
+  assert.equal(cancel.body.outcome, 'failure');
+  assert.equal(cancel.body.payment.status, 'failed');
+
+  // finance sees the attempts
+  const list = await ctx.as('finance').get(`/api/finance/payments?order_id=${o.order_id}`);
+  assert.equal(list.status, 200);
+  assert.deepEqual(list.body.items.map((x) => x.status), ['captured', 'failed']);
+  await ledgerBalanced();
 });
