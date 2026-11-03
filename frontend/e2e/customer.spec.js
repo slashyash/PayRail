@@ -253,7 +253,7 @@ test('finance gateway simulator: wrong amount refused, 3 duplicate deliveries ca
   // customers cannot use the simulator
   expect((await request.post(`${API}/mock-gateway/payments/${attempt.payment_id}/simulate`, { headers, data: { outcome: 'success' } })).status()).toBe(403);
 
-  await login(page, 'finance@payrail.demo', /\/finance\/refunds$/);
+  await login(page, 'finance@payrail.demo', /\/finance$/);
   await page.getByRole('link', { name: 'Gateway simulator' }).click();
   const fin = await financeApi(request);
   const row = page.getByTestId('sim-payment-row').filter({ hasText: `#${attempt.payment_id}` });

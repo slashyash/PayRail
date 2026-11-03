@@ -90,6 +90,7 @@ export default function Settlements() {
       setTick((t) => t + 1);
     } catch (err) {
       setError(err);
+      setTick(t => t + 1); // refresh stored rows even if the import response was lost
     } finally {
       setBusy(false);
     }
@@ -149,13 +150,13 @@ export default function Settlements() {
               {list.data.items.map((s) => (
                 <tr key={s.settlement_id} className="border-t border-slate-100">
                   <td className="td">#{s.settlement_id}</td>
-                  <td className="td font-mono text-xs">{s.gateway_ref}</td>
+                  <td className="td font-mono text-xs"><Link className="underline" to={`/finance/reconciliation?ref=${s.gateway_ref}&as_of=${s.settled_on}`}>{s.gateway_ref}</Link></td>
                   <td className="td">{s.record_type}</td>
                   <td className="td num"><Money paise={s.gross_paise} /></td>
                   <td className="td num"><Money paise={s.fee_paise} /></td>
                   <td className="td">{formatDate(s.settled_on)}</td>
                   <td className="td whitespace-nowrap">{formatDateTime(s.imported_at)}</td>
-                  <td className="td">{s.posted_entry_id ? `#${s.posted_entry_id}` : <span className="text-amber-700">not posted</span>}</td>
+                  <td className="td">{s.posted_entry_id ? <Link className="underline" to={`/finance/trace/entry/${s.posted_entry_id}`}>#{s.posted_entry_id}</Link> : <span className="text-amber-700">not posted</span>}</td>
                 </tr>
               ))}
             </tbody>

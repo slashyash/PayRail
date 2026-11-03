@@ -3,6 +3,9 @@
 import { lazy, Suspense } from 'react';
 import { Navigate, Outlet, Route, Routes, useLocation } from 'react-router-dom';
 import Layout from './components/Layout.jsx';
+import Trace from './pages/finance/Trace.jsx';
+import Overview from './pages/finance/Overview.jsx';
+import Record from './pages/finance/Record.jsx';
 import { ErrorBox, Spinner } from './components/ui.jsx';
 import Cart from './pages/Cart.jsx';
 import Catalogue from './pages/Catalogue.jsx';
@@ -50,7 +53,7 @@ function RequireRole({ role }) {
 
 function Home() {
   const { user } = useAuth();
-  const home = { customer: '/shop', vendor_admin: '/vendor', finance_admin: '/finance/refunds' }[user.role] ?? '/login';
+  const home = { customer: '/shop', vendor_admin: '/vendor', finance_admin: '/finance' }[user.role] ?? '/login';
   return <Navigate to={home} replace />;
 }
 
@@ -81,6 +84,10 @@ export default function App() {
             <Route path="vendor/reports" element={lazyPage(<VendorReports />)} />
           </Route>
           <Route element={<RequireRole role="finance_admin" />}>
+            <Route path="finance/trace/:kind/:id" element={<Trace />} />
+            <Route path="finance" element={<Overview />} />
+            <Route path="finance/orders/:id" element={<Record />} />
+            <Route path="finance/payouts/:id" element={<Record />} />
             <Route path="finance/refunds" element={<FinanceRefunds />} />
             <Route path="finance/payouts" element={<FinancePayouts />} />
             <Route path="finance/settlements" element={<Settlements />} />

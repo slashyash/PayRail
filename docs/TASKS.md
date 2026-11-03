@@ -110,3 +110,7 @@ Clean-install rehearsal (fresh clone + fresh DB), full test run, browser smoke t
 ## T8 — Submission pack — TODO
 README (actual contributions **confirmed by team**), final design PDF ≤ 5 pages + editable source, DEMO.md (10–12 min), VIVA.md, final requirements checklist.
 **Acceptance:** as PI Task 8. Claude does not push/submit.
+
+
+## Operations UI update (2026-11-03)
+Implemented read-only finance overview, reconciliation summary and differences, order/payout detail routes, and exact-record recovery after uncertain finance decisions. No financial schema or workflow changes. Validation results will be recorded after checks.

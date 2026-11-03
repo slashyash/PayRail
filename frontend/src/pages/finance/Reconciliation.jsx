@@ -6,14 +6,14 @@
 // holiday calendar). Settlement rows dated after as_of are ignored for that run.
 // Without as_of the server uses PAYRAIL_DEMO_AS_OF (2026-10-31 for the demo).
 import { useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { Empty, ErrorBox, Money, Notice, Pager, Spinner, StatusBadge, formatDate } from '../../components/ui.jsx';
 import { api } from '../../lib/api.js';
 import { useApi } from '../../lib/useApi.js';
 
 const PAGE_SIZE = 25;
 export const CATEGORIES = {
-  matched: 'Known reference, same type and amount — posted to the ledger once.',
+  matched: 'Known reference, same type and amount. Check the separate posting status to see whether a ledger entry exists.',
   amount_mismatch: 'Known reference but the report differs (amount, fee or record type) — stored, NOT posted; investigate.',
   unknown_reference: 'No captured payment / processed refund with this reference — stored, NOT posted, no payment invented. Re-run later: it posts if the payment appears and matches.',
   in_transit: 'Captured / processed, no settlement row yet, still within T+2.',
@@ -38,7 +38,10 @@ export default function Reconciliation() {
     [asOf, category, ref, page, tick],
   );
 
+  const summary = useApi(() => api.get('/finance/overview', { as_of: asOf }), [asOf, tick]);
+
   function update(changes) {
+    if ('as_of' in changes) setRun(null);
     const next = new URLSearchParams(params);
     for (const [k, v] of Object.entries(changes)) if (v) next.set(k, v); else next.delete(k);
     if (!('page' in changes)) next.delete('page');
@@ -73,21 +76,24 @@ export default function Reconciliation() {
           <label className="label" htmlFor="rc-asof">As of (IST date)</label>
           <input id="rc-asof" type="date" className="input" value={asOf} onChange={(e) => update({ as_of: e.target.value })} />
         </div>
-        <button type="button" className="btn-primary" disabled={running} onClick={reconcile}>{running ? 'Running…' : 'Run reconciliation'}</button>
+        <button type="button" className="btn-primary" disabled={running} onClick={reconcile}>{running ? 'Running…' : 'Post newly matching settlements'}</button>
         <span className="text-sm text-slate-500" data-testid="rc-asof-used">Using as-of date: <strong>{report.data?.as_of ?? '…'}</strong>{!asOf && ' (server demo default)'}</span>
       </div>
+      <p className="text-sm text-slate-600">Viewing this report does not post entries. The action above records newly matching settlements in the ledger.</p>
       <ErrorBox error={runError} title="Reconciliation failed" />
 
-      {run && (
+      <ErrorBox error={summary.error} onRetry={summary.reload} />
+      {summary.loading && <Spinner label="Updating summary…" />}
+      {(summary.data || run) && (
         <div className="card space-y-2 p-0" data-testid="rc-summary">
-          <h2 className="px-3 pt-3 font-medium">Summary as of {formatDate(run.as_of)}</h2>
+          <h2 className="px-3 pt-3 font-medium">Summary as of {formatDate((run ?? summary.data).as_of)}</h2>
           <table className="w-full">
             <thead><tr>
               <th className="th">Category</th><th className="th num">Items</th><th className="th num">Expected</th>
               <th className="th num">Settled gross</th><th className="th num">Fees</th><th className="th num">Posted</th><th className="th num">Newly posted now</th>
             </tr></thead>
             <tbody>
-              {run.categories.map((c) => (
+              {(summary.data?.categories ?? run.categories).map((c) => (
                 <tr key={c.category} className="border-t border-slate-100" data-testid="rc-category" data-category={c.category}>
                   <td className="td"><button type="button" className="hover:underline" onClick={() => update({ category: c.category })}><StatusBadge status={c.category} /></button></td>
                   <td className="td num" data-testid="rc-items">{c.items}</td>
@@ -95,12 +101,12 @@ export default function Reconciliation() {
                   <td className="td num"><Money paise={c.settled_gross_paise} /></td>
                   <td className="td num"><Money paise={c.fee_paise} /></td>
                   <td className="td num">{c.posted_items}</td>
-                  <td className="td num" data-testid="rc-newly">{c.newly_posted}</td>
+                  <td className="td num" data-testid="rc-newly">{run?.as_of === summary.data?.as_of ? (run.categories.find(x => x.category === c.category)?.newly_posted ?? '0') : '—'}</td>
                 </tr>
               ))}
             </tbody>
           </table>
-          {run.categories.some((c) => c.newly_posted !== '0') && (
+          {run?.categories.some((c) => c.newly_posted !== '0') && (
             <div className="px-3 pb-3"><Notice tone="success">Rows that now match exactly were posted during this run.</Notice></div>
           )}
         </div>
@@ -140,20 +146,20 @@ export default function Reconciliation() {
           <table className="w-full">
             <thead><tr>
               <th className="th">Category</th><th className="th">Reference</th><th className="th">Event → due (T+2)</th><th className="th">Settled</th><th className="th num">Expected</th><th className="th num">Reported</th>
-              <th className="th num">Fee</th><th className="th num">Days overdue</th><th className="th">Posted</th><th className="th">Detail</th>
+              <th className="th num">Difference (reported − expected)</th><th className="th num">Fee</th><th className="th num">Days overdue</th><th className="th">Posted</th><th className="th">Detail</th>
             </tr></thead>
             <tbody>
               {report.data.items.map((r, i) => (
                 <tr key={`${r.gateway_ref}-${r.settlement_id ?? ''}-${i}`} className="border-t border-slate-100" data-testid="rc-row" data-category={r.category} data-ref={r.gateway_ref}>
                   <td className="td"><StatusBadge status={r.category} /></td>
-                  <td className="td font-mono text-xs">{r.gateway_ref}<div className="font-sans text-slate-500">{r.record_type}</div></td>
+                  <td className="td font-mono text-xs">{r.payment_id || r.refund_id ? <Link className="underline" to={`/finance/trace/${r.payment_id ? 'payment' : 'refund'}/${r.payment_id ?? r.refund_id}`}>{r.gateway_ref}</Link> : r.gateway_ref}<div className="font-sans text-slate-500">{r.record_type}</div></td>
                   <td className="td whitespace-nowrap">{r.event_on ? `${formatDate(r.event_on)} → ${formatDate(r.expected_on)}` : '—'}</td>
                   <td className="td whitespace-nowrap">{formatDate(r.settled_on)}</td>
                   <td className="td num">{r.expected_paise ? <Money paise={r.expected_paise} /> : '—'}</td>
                   <td className="td num">{r.settled_gross_paise ? <Money paise={r.settled_gross_paise} /> : '—'}</td>
-                  <td className="td num">{r.fee_paise ? <Money paise={r.fee_paise} /> : '—'}</td>
+                  <td className="td num">{r.expected_paise != null && r.settled_gross_paise != null ? <Money paise={(BigInt(r.settled_gross_paise)-BigInt(r.expected_paise)).toString()}/> : '—'}</td><td className="td num">{r.fee_paise ? <Money paise={r.fee_paise} /> : '—'}</td>
                   <td className="td num">{r.days_overdue ?? '—'}</td>
-                  <td className="td">{r.posted_entry_id ? `#${r.posted_entry_id}` : '—'}</td>
+                  <td className="td">{r.posted_entry_id ? <Link className="underline" to={`/finance/trace/entry/${r.posted_entry_id}`}>Posted #{r.posted_entry_id}</Link> : 'Not posted'}</td>
                   <td className="td min-w-[14rem] text-xs">{r.detail}</td>
                 </tr>
               ))}

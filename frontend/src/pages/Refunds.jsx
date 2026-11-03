@@ -48,7 +48,7 @@ export default function Refunds() {
                   <td className="td"><Link className="text-indigo-700 underline" to={`/orders/${r.order_id}`}>#{r.order_id}</Link> / {r.line_no}</td>
                   <td className="td">{r.product_name}</td>
                   <td className="td num"><Money paise={r.amount_paise} /></td>
-                  <td className="td max-w-xs truncate" title={r.reason}>{r.reason}</td>
+                  <td className="td align-top"><div className="w-48 whitespace-pre-wrap [overflow-wrap:anywhere]">{r.reason}</div></td>
                   <td className="td"><StatusBadge status={r.status} /></td>
                   <td className="td">{formatDateTime(r.requested_at)}</td>
                   <td className="td">{formatDateTime(r.processed_at)}</td>

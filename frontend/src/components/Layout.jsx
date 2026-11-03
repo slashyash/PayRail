@@ -37,6 +37,7 @@ export default function Layout() {
           )}
           {user.role === 'finance_admin' && (
             <nav className="flex flex-wrap gap-1" aria-label="Main">
+              <NavLink to="/finance" end className={link}>Overview</NavLink>
               <NavLink to="/finance/refunds" className={link}>Refunds</NavLink>
               <NavLink to="/finance/payouts" className={link}>Payouts</NavLink>
               <NavLink to="/finance/settlements" className={link}>Settlements</NavLink>
