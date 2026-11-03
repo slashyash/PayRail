@@ -220,3 +220,28 @@ Environment: PostgreSQL 16.15 cluster (`initdb`, TCP 127.0.0.1:5433, scram-sha-2
 | Customer UI and `npm run test:e2e` on a team Mac (Docker DB; needs `npx playwright install chromium`) | written in the sandbox; not run on a team machine yet |
 | Vendor/finance UI and `vendor-finance.spec.js` on a team Mac | written and run in the sandbox only |
 | Reports (`30_reports.sql`, `31_reports_seed.sql`, `reports.test.js`, `reports.spec.js`, `explain_reports.sql`) on a team Mac | written and run in the sandbox only |
+
+
+## Operations UI update (2026-11-03)
+Implemented read-only finance overview, reconciliation summary and differences, order/payout detail routes, and exact-record recovery after uncertain finance decisions. No financial schema or workflow changes. Validation results will be recorded after checks.
+
+Validation: frontend production build passed; backend route syntax check passed. Docker daemon unavailable on this machine, so database/API/browser integration checks have not run for this update. Historical test counts do not validate these changes.
+
+Final local checks: production build passed after record links; existing money unit tests 4/4 passed; backend syntax and git diff whitespace checks passed. Added a focused recovery test for committed, pending, unreadable, rejected, and conflicting-UTR outcomes.
+
+### Operations UI update: full regression in the cloud sandbox (2026-11-03, session 8)
+Environment: PostgreSQL 16.15 (`initdb`, TCP 127.0.0.1:5433, scram), node 22.23.4; `main` @ `7f5588f` plus the Mac's uncommitted Operations UI files (13 modified, 5 new; same diff stat as the Mac).
+
+| Check | Result |
+|---|---|
+| `db/tests/run_sql_tests.sh` | **304 passed**, 0 failed (no schema change) |
+| `npm run test:api` | **40/40** (no existing test covers the new endpoints) |
+| `npm run test:concurrency` | **12/12** |
+| frontend `npm test` (money + new `recover.test.js`) | **5/5** |
+| `vite build` | built |
+| `npm run test:e2e`, as received | **6 passed, 5 failed**: every finance login expected `/finance/refunds`, but `App.jsx` now lands finance on `/finance` |
+| …after changing the landing regex to `/\/finance$/` | 9 passed, 2 failed: `getByRole('link', {name:'Payouts'})` also matched the Overview "Pending payouts" card (strict mode); the refund test assumed it started on the refund queue |
+| …after `exact: true` on the Payouts link and an explicit click on the Refunds nav link | **11 passed** |
+| Manual API calls on a fresh seeded `payrail` (curl, as finance / vendor7 / customer1 / no token) | `/finance/overview` (default and `as_of=2026-09-30`), `/finance/trace/{payment,refund,entry}/:id`, `/finance/refunds/:id`, `/finance/payouts/:id`, `/finance/journal-entries?entry_id=` → 200 with expected rows; bad kind/id → 422; missing → 404; vendor/customer → 403; no token → 401 |
+| Playwright walk of Overview, Trace (payment/refund/entry/missing), Record (order/payout), Reconciliation, Settlements, Reports `?r=R6&vendor_id=7` | all rendered; the only console errors were the deliberate 404 and the induced connection reset |
+| Lost-response recovery (Playwright `route.fetch()` then `abort('connectionreset')`) | refund #40 approve → page showed "processed" + its ledger entry; payout #82 paid with UTR → page showed "paid — UTR …"; DB: payout `paid` with that UTR, still exactly 1 journal entry for it |

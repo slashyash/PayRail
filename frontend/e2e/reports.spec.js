@@ -32,7 +32,7 @@ function watchConsole(page) {
 test('finance: R1–R6 render the SQL report results exactly', async ({ page, request }) => {
   const problems = watchConsole(page);
   const fin = await apiAs(request, 'finance@payrail.demo');
-  await login(page, 'finance@payrail.demo', /\/finance\/refunds$/);
+  await login(page, 'finance@payrail.demo', /\/finance$/);
   await page.getByRole('link', { name: 'Reports' }).click();
   await expect(page).toHaveURL(/\/finance\/reports$/);
 

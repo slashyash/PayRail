@@ -7,6 +7,8 @@
 // (a late refund). A decided refund is final: a second, different decision is
 // refused (PRS01); repeating the same decision returns the same row.
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
+import { decideAndRecover } from '../../lib/recover.js';
 import { Empty, ErrorBox, Money, Notice, Pager, Spinner, StatusBadge, formatDateTime } from '../../components/ui.jsx';
 import { api } from '../../lib/api.js';
 import { useApi } from '../../lib/useApi.js';
@@ -31,7 +33,7 @@ export default function FinanceRefunds() {
     setBusyId(r.refund_id);
     setError(null);
     try {
-      const refund = await api.post(`/finance/refunds/${r.refund_id}/${action}`);
+      const refund = await decideAndRecover(`/finance/refunds/${r.refund_id}/${action}`, undefined, `/finance/refunds/${r.refund_id}`, action === 'approve' ? 'processed' : 'rejected');
       setLast({ refund, action, before: r });
       list.reload();
     } catch (err) {
@@ -93,7 +95,7 @@ export default function FinanceRefunds() {
               {list.data.items.map((r) => (
                 <tr key={r.refund_id} className="border-t border-slate-100" data-testid="finance-refund-row" data-refund-id={r.refund_id}>
                   <td className="td">#{r.refund_id}</td>
-                  <td className="td">#{r.order_id} / {r.line_no}</td>
+                  <td className="td"><Link className="underline" to={`/finance/orders/${r.order_id}`}>#{r.order_id}</Link> / {r.line_no}</td>
                   <td className="td">{r.customer_name}</td>
                   <td className="td">{r.vendor_name}<div className="text-xs text-slate-500">{r.product_name}</div></td>
                   <td className="td num"><Money paise={r.amount_paise} /></td>
@@ -101,7 +103,7 @@ export default function FinanceRefunds() {
                     <Money paise={r.line_total_paise} />
                     <div className="text-xs text-slate-500">refunded <Money paise={r.line_refunded_paise} /></div>
                   </td>
-                  <td className="td max-w-[12rem] truncate" title={r.reason}>{r.reason}</td>
+                  <td className="td align-top"><div className="w-48 whitespace-pre-wrap [overflow-wrap:anywhere]">{r.reason}</div></td>
                   <td className="td"><StatusBadge status={r.status} /></td>
                   <td className="td whitespace-nowrap">{formatDateTime(r.requested_at)}</td>
                   <td className="td">

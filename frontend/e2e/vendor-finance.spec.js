@@ -147,8 +147,8 @@ test('vendor → finance payout: replay is harmless, overspend refused, failed t
   await logout(page);
 
   // ---- finance: the transfer FAILED → one reversal restores the funds
-  await login(page, 'finance@payrail.demo', /\/finance\/refunds$/);
-  await page.getByRole('link', { name: 'Payouts' }).click();
+  await login(page, 'finance@payrail.demo', /\/finance$/);
+  await page.getByRole('link', { name: 'Payouts', exact: true }).click();
   const prow = page.locator(`[data-testid=finance-payout-row][data-payout-id="${payout.payout_id}"]`);
   await prow.getByRole('button', { name: 'Mark failed' }).click();
   const decision = page.getByTestId('payout-decision');
@@ -236,7 +236,8 @@ test('customer → finance refund: requested in the shop, approved and rejected 
   await logout(page);
 
   // ---- finance approves it on the refund queue
-  await login(page, 'finance@payrail.demo', /\/finance\/refunds$/);
+  await login(page, 'finance@payrail.demo', /\/finance$/);
+  await page.getByRole('link', { name: 'Refunds', exact: true }).click();
   const row = page.locator(`[data-testid=finance-refund-row][data-refund-id="${refundId}"]`);
   await expect(row).toContainText('Box was dented');
   await row.getByRole('button', { name: 'Approve' }).click();
@@ -279,7 +280,7 @@ test('customer → finance refund: requested in the shop, approved and rejected 
 test('settlement import (sample CSVs) and reconciliation; an unknown reference posts once its payment appears', async ({ page, request }) => {
   const problems = watchConsole(page);
   const fin = await apiAs(request, 'finance@payrail.demo');
-  await login(page, 'finance@payrail.demo', /\/finance\/refunds$/);
+  await login(page, 'finance@payrail.demo', /\/finance$/);
   await page.getByRole('link', { name: 'Settlements' }).click();
   const upload = async (file) => {
     await page.setInputFiles('#csv-file', new URL(file, SAMPLES).pathname);
@@ -321,7 +322,7 @@ test('settlement import (sample CSVs) and reconciliation; an unknown reference p
   // ---- reconciliation as of the demo date: every category, nothing mismatched is posted
   await page.getByRole('link', { name: 'Reconciliation', exact: true }).click();
   await expect(page.getByTestId('rc-asof-used')).toContainText('2026-10-31');
-  await page.getByRole('button', { name: 'Run reconciliation' }).click();
+  await page.getByRole('button', { name: 'Post newly matching settlements' }).click();
   for (const c of ['matched', 'amount_mismatch', 'unknown_reference', 'in_transit', 'overdue_missing']) {
     await expect(page.locator(`[data-testid=rc-category][data-category=${c}]`)).toBeVisible();
   }
@@ -358,10 +359,10 @@ test('settlement import (sample CSVs) and reconciliation; an unknown reference p
   await expect(rcRow(ref)).toHaveAttribute('data-category', 'unknown_reference');
   // the callback arrives late; the next reconciliation run posts the stored row (once)
   expect((await fin.post(`/mock-gateway/payments/${attempt.payment_id}/simulate`, { outcome: 'success' })).ok()).toBeTruthy();
-  await page.getByRole('button', { name: 'Run reconciliation' }).click();
+  await page.getByRole('button', { name: 'Post newly matching settlements' }).click();
   await expect(page.locator('[data-testid=rc-category][data-category=matched] [data-testid=rc-newly]')).toHaveText('1');
   await expect(rcRow(ref)).toHaveAttribute('data-category', 'matched');
-  await page.getByRole('button', { name: 'Run reconciliation' }).click();
+  await page.getByRole('button', { name: 'Post newly matching settlements' }).click();
   await expect(page.locator('[data-testid=rc-category][data-category=matched] [data-testid=rc-newly]')).toHaveText('0');
   const late = (await fin.get(`/finance/settlements?settled_on=${today}&page_size=100`)).items.filter((s) => s.gateway_ref === ref);
   expect(late).toHaveLength(1);

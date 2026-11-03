@@ -22,11 +22,14 @@ export function Empty({ title, children }) {
 /** Shows an ApiError (or any Error) with the backend's code / SQLSTATE and field details. */
 export function ErrorBox({ error, onRetry, title }) {
   if (!error) return null;
+  const uncertain = ['network', 'outcome_unknown'].includes(error.code) || error.status >= 500;
+  if (uncertain) title = 'Outcome not confirmed';
   return (
     <div role="alert" className="rounded-md border border-rose-200 bg-rose-50 p-3 text-sm text-rose-800">
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div>
           <p className="font-medium">{title ?? 'Request failed'}: {error.message}</p>
+          {uncertain && <p>The operation may have completed. Check the current record before retrying; reuse the original request when retrying.</p>}
           {(error.code || error.sqlstate) && (
             <p className="mt-0.5 font-mono text-xs text-rose-700">
               {error.status ? `HTTP ${error.status} · ` : ''}{error.code}{error.sqlstate ? ` · SQLSTATE ${error.sqlstate}` : ''}

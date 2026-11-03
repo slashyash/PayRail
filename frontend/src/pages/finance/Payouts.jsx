@@ -6,6 +6,8 @@
 // Terminal states never change (PRS01); repeating "failed" returns the same row and
 // posts nothing more, so a failed transfer restores funds exactly once.
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
+import { decideAndRecover } from '../../lib/recover.js';
 import { Empty, ErrorBox, Money, Notice, Pager, Spinner, StatusBadge, formatDateTime } from '../../components/ui.jsx';
 import { api } from '../../lib/api.js';
 import { cmpPaise } from '../../lib/money.js';
@@ -56,7 +58,7 @@ export default function FinancePayouts() {
     setBusyId(p.payout_id);
     setError(null);
     try {
-      const payout = await api.post(`/finance/payouts/${p.payout_id}/complete`, body);
+      const payout = await decideAndRecover(`/finance/payouts/${p.payout_id}/complete`, body, `/finance/payouts/${p.payout_id}`, body.outcome, row => body.outcome !== 'paid' || row.bank_utr === body.bank_utr);
       setLast({ payout, body });
       setPaying(null);
       setTick((t) => t + 1);
@@ -120,7 +122,7 @@ export default function FinancePayouts() {
             <tbody>
               {list.data.items.map((p) => (
                 <tr key={p.payout_id} className="border-t border-slate-100" data-testid="finance-payout-row" data-payout-id={p.payout_id}>
-                  <td className="td">#{p.payout_id}</td>
+                  <td className="td"><Link className="underline" to={`/finance/payouts/${p.payout_id}`}>#{p.payout_id}</Link></td>
                   <td className="td">{p.vendor_name}</td>
                   <td className="td num"><Money paise={p.amount_paise} /></td>
                   <td className="td"><StatusBadge status={p.status} /></td>

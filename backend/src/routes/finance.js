@@ -23,6 +23,39 @@ export function financeRoutes({ db, config }) {
   const asOfOrDefault = async (asOf) =>
     asOf ?? config.demoAsOf ?? (await db.one(`SELECT (now() AT TIME ZONE 'Asia/Kolkata')::date::text AS d`)).d;
 
+  r.get('/trace/:kind/:id', async (req, res) => {
+    const {kind, id} = parseParams(req, {kind: z.enum(['payment','refund','entry']), id: idString});
+    const tables = {payment:['payments','payment_id'], refund:['refunds','refund_id'], entry:['journal_entries','entry_id']};
+    const [table,key] = tables[kind];
+    const row = await db.one(`SELECT * FROM ${table} WHERE ${key}=$1`, [id]);
+    if (!row) throw notFound(kind);
+    res.json(stripKey(row));
+  });
+
+  // Read-only operational summaries; no reconciliation posting occurs on GET.
+  r.get('/overview', async (req, res) => {
+    const q = parseQuery(req, { as_of: dateString.optional() });
+    const asOf = await asOfOrDefault(q.as_of);
+    const [refunds, payouts, vendors, categories] = await Promise.all([
+      db.one("SELECT count(*) AS items, coalesce(sum(amount_paise),0)::text AS amount_paise, min(requested_at) AS oldest FROM refunds WHERE status='requested'"),
+      db.one("SELECT count(*) AS items, coalesce(sum(amount_paise),0)::text AS amount_paise, min(requested_at) AS oldest FROM payouts WHERE status='requested'"),
+      db.query("SELECT vendor_id, code, balance_paise FROM v_account_balances WHERE owner_type='vendor' AND balance_paise < 0 ORDER BY balance_paise"),
+      db.query("SELECT category, count(*) AS items, coalesce(sum(expected_paise),0)::text AS expected_paise, coalesce(sum(settled_gross_paise),0)::text AS settled_gross_paise, coalesce(sum(fee_paise),0)::text AS fee_paise, count(posted_entry_id) AS posted_items FROM fn_reconciliation_report($1) GROUP BY category ORDER BY category", [asOf]),
+    ]);
+    res.json({ as_of: asOf, refunds, payouts, negative_vendors: vendors.rows, categories: categories.rows });
+  });
+
+  // Exact-record reads support recovery after an uncertain mutation response.
+  for (const kind of ['refunds', 'payouts']) {
+    const key = kind === 'refunds' ? 'refund_id' : 'payout_id';
+    r.get(`/${kind}/:id`, async (req, res) => {
+      const { id } = parseParams(req, { id: idString });
+      const row = await db.one(`SELECT * FROM ${kind} WHERE ${key}=$1`, [id]);
+      if (!row) throw notFound(kind);
+      res.json(stripKey(row));
+    });
+  }
+
   // ------------------------------------------------------------ W3 refunds
   r.get('/refunds', async (req, res) => {
     const q = parseQuery(req, {
@@ -204,6 +237,7 @@ export function financeRoutes({ db, config }) {
   r.get('/journal-entries', async (req, res) => {
     const q = parseQuery(req, {
       ...pageQuery,
+      entry_id: idString.optional(),
       entry_type: z.enum(['capture', 'refund', 'payout', 'settlement', 'reversal']).optional(),
       payment_id: idString.optional(), refund_id: idString.optional(), payout_id: idString.optional(),
       order_id: idString.optional(),
@@ -212,7 +246,7 @@ export function financeRoutes({ db, config }) {
       `SELECT e.entry_id, e.entry_type, e.description, e.created_at, e.payment_id, e.refund_id, e.payout_id,
               e.settlement_id, e.reverses_entry_id, ${LINES_JSON}, count(*) OVER () AS total_count
          FROM journal_entries e
-        WHERE ($1::text IS NULL OR e.entry_type = $1)
+        WHERE ($8::bigint IS NULL OR e.entry_id = $8) AND ($1::text IS NULL OR e.entry_type = $1)
           AND ($2::bigint IS NULL OR e.payment_id = $2)
           AND ($3::bigint IS NULL OR e.refund_id = $3)
           AND ($4::bigint IS NULL OR e.payout_id = $4
@@ -222,7 +256,7 @@ export function financeRoutes({ db, config }) {
                OR e.refund_id  IN (SELECT refund_id  FROM refunds  WHERE order_id = $5))
         ORDER BY e.entry_id DESC LIMIT $6 OFFSET $7`,
       [q.entry_type ?? null, q.payment_id ?? null, q.refund_id ?? null, q.payout_id ?? null, q.order_id ?? null,
-        q.page_size, offset(q)]);
+        q.page_size, offset(q), q.entry_id ?? null]);
     res.json(pageOf(rows, q));
   });
 

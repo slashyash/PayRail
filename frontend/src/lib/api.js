@@ -46,7 +46,8 @@ export async function request(method, path, { body, rawBody, contentType, query,
     throw new ApiError(0, 'network', 'Could not reach the PayRail server. Check that the backend is running, then retry.');
   }
 
-  const text = await res.text();
+  let text;
+  try { text = await res.text(); } catch { throw new ApiError(0, 'network', 'The response was interrupted. Check the current record before retrying.'); }
   let data = null;
   if (text) {
     try { data = JSON.parse(text); } catch { data = null; }
@@ -61,6 +62,7 @@ export async function request(method, path, { body, rawBody, contentType, query,
     throw new ApiError(res.status, err?.code ?? 'http_error', err?.message ?? `HTTP ${res.status}`,
       { sqlstate: err?.sqlstate, details: err?.details });
   }
+  if (res.status !== 204 && data === null) throw new ApiError(0, 'network', 'The server response could not be read. Check the current record before retrying.');
   return data;
 }
 

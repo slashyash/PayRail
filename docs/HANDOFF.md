@@ -72,3 +72,13 @@ See `db/reports/README.md` (per-report SQL walkthrough, EXPLAIN findings, viva q
 
 ## Next concrete action
 T7: clean-install rehearsal from a fresh clone and fresh DB (Docker path and local path), a one-command startup check that names the `.env` / role-password problem, a safe demo reset + recovery script, fix the two T6 findings above, then a full regression and a timed demo dry run that DEMO.md (T8) can follow.
+
+
+## Operations UI update (2026-11-03)
+Implemented read-only finance overview, reconciliation summary and differences, order/payout detail routes, and exact-record recovery after uncertain finance decisions. No financial schema or workflow changes. Validation results will be recorded after checks.
+
+Validation: frontend production build passed; backend route syntax check passed. Docker daemon unavailable on this machine, so database/API/browser integration checks have not run for this update. Historical test counts do not validate these changes.
+
+Final local checks: production build passed after record links; existing money unit tests 4/4 passed; backend syntax and git diff whitespace checks passed. Added a focused recovery test for committed, pending, unreadable, rejected, and conflicting-UTR outcomes.
+
+Session 8 (2026-11-03): full regression run in the cloud sandbox: SQL 304, API 40/40, concurrency 12/12, frontend unit 5/5, build ok, e2e 11/11 after updating three e2e specs for the new `/finance` landing page (see TEST_EVIDENCE). The new endpoints were checked by hand and in a Playwright walk, but **they still have no automated API test**. Next: add `backend/test/api` cases for `/finance/overview`, `/finance/trace/:kind/:id`, `/finance/{refunds,payouts}/:id`, `journal-entries?entry_id=` (incl. 403 for vendor/customer), then continue T7.
