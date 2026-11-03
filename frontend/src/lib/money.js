@@ -58,3 +58,26 @@ export function paiseToInput(paise) {
 export const addPaise = (a, b) => (toPaise(a) + toPaise(b)).toString();
 export const mulPaise = (a, qty) => (toPaise(a) * BigInt(qty)).toString();
 export const cmpPaise = (a, b) => { const x = toPaise(a); const y = toPaise(b); return x < y ? -1 : x > y ? 1 : 0; };
+
+/**
+ * DISPLAY-ONLY chart geometry (DEC-040): paise → whole rupees as a Number,
+ * truncated toward zero, so a chart library can size a bar. Never used for
+ * arithmetic, totals or any value shown as text — labels and tooltips use
+ * formatINR on the exact string. Throws instead of losing precision.
+ */
+export function chartRupees(paise) {
+  const r = toPaise(paise) / 100n;
+  if (r > BigInt(Number.MAX_SAFE_INTEGER) || r < -BigInt(Number.MAX_SAFE_INTEGER)) {
+    throw new RangeError(`too large to chart: ${String(paise)}`);
+  }
+  return Number(r);
+}
+
+/** basis points string → "4.48%" (exact string arithmetic; null → "—") */
+export function formatBps(bps) {
+  if (bps === null || bps === undefined) return '—';
+  const b = BigInt(bps);
+  const neg = b < 0n;
+  const a = neg ? -b : b;
+  return `${neg ? '−' : ''}${a / 100n}.${(a % 100n).toString().padStart(2, '0')}%`;
+}

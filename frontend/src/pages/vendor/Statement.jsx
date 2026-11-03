@@ -3,7 +3,8 @@
 // (v_vendor_statement: SUM(credit − debit) OVER (PARTITION BY vendor ORDER BY
 // created_at, entry_id, line_no)). The date filter is applied after the window,
 // so the running balance on the first shown row already includes earlier history;
-// the opening balance is everything before `from`.
+// the opening balance is everything before `from`. Served by report R2
+// (fn_report_vendor_statement, db/schema/32_reports.sql).
 //   GET /api/vendor/statement?from&to&page&page_size
 import { useSearchParams } from 'react-router-dom';
 import { Empty, ErrorBox, Money, Pager, Spinner, Stat, StatusBadge, formatDateTime } from '../../components/ui.jsx';
@@ -14,6 +15,7 @@ import { useApi } from '../../lib/useApi.js';
 const PAGE_SIZE = 25;
 
 function reference(l) {
+  if (l.reference) return l.reference;          // R2: "order 12", "refund 5 (order 12)", "payout 3", …
   if (l.payment_id) return `payment #${l.payment_id}`;
   if (l.refund_id) return `refund #${l.refund_id}`;
   if (l.payout_id) return `payout #${l.payout_id}`;

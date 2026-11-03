@@ -1,7 +1,10 @@
 -- 31_indexes.sql — secondary indexes. Primary keys and UNIQUE constraints
 -- already create indexes (e.g. order_items(order_id, ...), products(vendor_id, name),
--- journal_entries' reference columns). Benefits are to be measured with
--- EXPLAIN (ANALYZE, BUFFERS) on the seeded database in Task 6 — no claims yet.
+-- journal_entries' reference columns). Measured with EXPLAIN (ANALYZE, BUFFERS)
+-- on the seeded database in Task 6 (db/reports/explain_reports.sql →
+-- docs/evidence/T6_explain_seed.txt): ledger_lines_account_entry_idx and
+-- orders_customer_created_idx are used; the others are not chosen at seed
+-- size (1–5 page tables) and are kept for FK checks and growth, unclaimed.
 
 SET ROLE payrail_owner;
 SET search_path = payrail;

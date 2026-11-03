@@ -6,6 +6,7 @@ import { z } from 'zod';
 import { fromDbError, notFound } from '../errors.js';
 import { parseSettlementCsv, settlementRowSchema, MAX_ROWS } from '../settlementCsv.js';
 import { dateString, idString, offset, pageOf, pageQuery, parseBody, parseParams, parseQuery } from '../validate.js';
+import { financeReportRoutes, trialBalance } from './reports.js';
 
 const CATEGORIES = ['matched', 'amount_mismatch', 'unknown_reference', 'in_transit', 'overdue_missing'];
 const stripKey = ({ idempotency_key, ...rest }) => rest;
@@ -163,15 +164,16 @@ export function financeRoutes({ db, config }) {
   });
 
   // ------------------------------------------------------------ ledger views
+  // R1 (fn_report_trial_balance) — kept at this path for the T5 Ledger page
   r.get('/trial-balance', async (req, res) => {
-    const { rows } = await db.query(
-      `SELECT account_id, code, owner_type, vendor_id, account_class, normal_side, debit_paise, credit_paise, balance_paise
-         FROM v_account_balances ORDER BY account_id`);
-    const t = await db.one(
-      `SELECT sum(debit_paise)::bigint AS total_debit_paise, sum(credit_paise)::bigint AS total_credit_paise
-         FROM v_account_balances`);
-    res.json({ accounts: rows, ...t, balanced: t.total_debit_paise === t.total_credit_paise });
+    const q = parseQuery(req, { as_of: dateString.optional() });
+    const { accounts, total } = await trialBalance(db, q.as_of);
+    res.json({ accounts, total_debit_paise: total.debit_paise, total_credit_paise: total.credit_paise,
+               balanced: total.balanced, as_of: q.as_of ?? null });
   });
+
+  // ------------------------------------------------------------ named reports R1–R6 (Task 6)
+  r.use('/reports', financeReportRoutes({ db, asOfOrDefault }));
 
   r.get('/vendors', async (req, res) => {
     const { rows } = await db.query(

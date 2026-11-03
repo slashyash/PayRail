@@ -11,7 +11,7 @@ Target dates are a suggested schedule against the GL §7 submission date (15 Nov
 | T3 | Backend and authentication | T2 | 7–8 Nov | DONE |
 | T4 | Customer workflow UI | T3 | 9–10 Nov | DONE (2026-11-02) |
 | T5 | Vendor and finance workflow UI | T3 (parallel with T4) | 10–11 Nov | DONE (2026-11-02) |
-| T6 | SQL reports and DBMS evidence | T2 (SQL), T4/T5 (UI exposure) | 12 Nov | TODO |
+| T6 | SQL reports and DBMS evidence | T2 (SQL), T4/T5 (UI exposure) | 12 Nov | DONE (2026-11-02) |
 | T7 | Integration, regression tests, demo reliability | T4, T5, T6 | 13–14 Nov | TODO |
 | T8 | README, final design PDF, DEMO, VIVA | T7 (contributions need team input) | 14–15 Nov | TODO |
 
@@ -87,9 +87,21 @@ Files: `frontend/src/pages/vendor/{VendorHome,Products,Statement,Payouts}.jsx`, 
 - [x] Browser tests: 5 new (catalogue CRUD; payout incl. replay, overspend, failed-once, paid; unverified + negative vendor; customer → finance refund approve/reject; settlement samples + reconciliation incl. unknown-ref revisit)
 **Acceptance (PI Task 5):** customer → finance refund ✔ and vendor → finance payout ✔ end to end in the UI (T5-03); failed payouts restore funds exactly once ✔ (UI + ledger: 1 reversal, retry posts nothing, T5-03/T5-06); unverified vendor (`PRV03`) and overspending (`PRF01`, incl. a negative-balance vendor) refused ✔; catalogue create/edit/archive/reactivate/delete-draft and refused delete of referenced history ✔; settlement imports persist and explain each case; only exact matches are posted ✔ (T5-04). Not yet run on a team Mac.
 
-## T6 — Reports and DBMS evidence — TODO
-R1 trial balance · R2 vendor statement (window running balance) · R3 monthly performance · R4 vendor refund risk · R5 reconciliation & aging · R6 vendor payable/payout summary. Fixtures, correct aggregation grain, filters, EXPLAIN (ANALYZE, BUFFERS) on seeded DB, feature matrix.
-**Acceptance:** as PI Task 6.
+## T6 — Reports and DBMS evidence — DONE (2026-11-02)
+Files: `db/schema/32_reports.sql` (+ GRANTs in `99_privileges.sql`, comment in `31_indexes.sql`), `db/tests/30_reports.sql`, `db/tests/31_reports_seed.sql`, `db/reports/{README.md,run_reports.sql,explain_reports.sql}`; backend `src/routes/reports.js` (+ `finance.js` trial balance = R1, `vendor.js` statement = R2), `test/api/reports.test.js`; frontend `src/pages/finance/Reports.jsx`, `src/pages/vendor/Reports.jsx`, `src/{App.jsx,components/Layout.jsx,lib/money.js(+test)}`, `pages/vendor/Statement.jsx`, `pages/finance/TrialBalance.jsx` (comments / reference column), `e2e/reports.spec.js`, `package.json` + lock (recharts 3.10.1); docs `docs/FEATURE_MATRIX.md`, `docs/evidence/T6_explain_seed.txt`, `db/README.md`, `backend/README.md`, `frontend/README.md`. DEC-040.
+- [x] R1 trial balance (per-account Dr/Cr, `GROUPING SETS` total + equality, as-of filter)
+- [x] R2 vendor statement (window running balance over the full history, date filter after the window, opening/closing, references)
+- [x] R3 monthly performance (IST months via `generate_series`, month-grain CTEs, explicit date bases, cumulative window; Recharts chart + table)
+- [x] R4 vendor refund risk (sales cohort, explicit numerator/denominator, rank above a minimum sample, bands)
+- [x] R5 settlement reconciliation & aging (reference matching from `fn_reconciliation_report`, per-category age buckets, subtotals, net cash of posted rows)
+- [x] R6 vendor payables/payouts (ledger decomposition by entry type + payouts-table cross-check)
+- [x] Aggregation at the correct grain (fan-out test), date/vendor filters, exact paise / basis points
+- [x] Hand-checkable fixture (24 checks) + seed cross-checks (7) + mutation checks (T6-04)
+- [x] API: `/api/finance/reports/*` (finance), `/api/vendor/reports/*` (own vendor), statement and trial balance reuse R2/R1; 7 API tests
+- [x] UI: finance Reports page (6 tabs), vendor Reports page; 2 browser tests; screens viewed (T6-06)
+- [x] `EXPLAIN (ANALYZE, BUFFERS)` on the seeded DB + index experiment; index justification without speed claims
+- [x] Feature matrix (`docs/FEATURE_MATRIX.md`) with files, tests and demo paths; report walkthrough (`db/reports/README.md`)
+**Acceptance (PI Task 6):** ≥ 5 named non-trivial reports ✔ (six); agree with small hand-checkable fixtures ✔ (T6-01, `30_reports.sql`) and seeded records ✔ (`31_reports_seed.sql`); finance UI shows all six, vendor UI shows vendor-scoped R2/R4/R6 ✔ (T6-03); no join fan-out (aggregated per grain, tested) ✔; date/vendor filters ✔; joins/grouping/CTEs/windows explained ✔ (`db/reports/README.md`); EXPLAIN (ANALYZE, BUFFERS) collected, indexes justified without invented speed-ups ✔ (T6-05); feature matrix with exact demo commands / UI paths ✔. Not yet run on a team Mac.
 
 ## T7 — Integration and demo reliability — TODO
 Clean-install rehearsal (fresh clone + fresh DB), full test run, browser smoke tests where feasible, fixed demo as-of date, safe reset/recovery commands, fix found issues.

@@ -58,6 +58,17 @@ GRANT EXECUTE ON FUNCTION
   fn_reconciliation_report(date)
 TO payrail_app;
 
+-- Named reports R1–R6 (32_reports.sql, Task 6). SECURITY INVOKER: they read
+-- with the caller's SELECT privileges; vendor scoping is the API's job.
+GRANT EXECUTE ON FUNCTION
+  fn_report_trial_balance(date),
+  fn_report_vendor_statement(bigint, date, date),
+  fn_report_monthly_performance(date, date),
+  fn_report_vendor_refund_risk(date, date, bigint),
+  fn_report_settlement_aging(date),
+  fn_report_vendor_payables(bigint)
+TO payrail_app;
+
 -- Deliberately NOT granted (internal building blocks; granting them would let
 -- the app post arbitrary entries or skip the workflow checks):
 --   fn_post_entry, fn_reverse_entry, fn_try_post_settlement, fn_lock_vendor_accounts,

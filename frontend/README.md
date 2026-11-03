@@ -24,10 +24,13 @@ npx playwright install chromium  # once per machine
 npm run test:e2e                 # browser smoke test (PAYRAIL_REBUILD_VIA_DOCKER=1 on Docker-only machines)
 ```
 `test:e2e` rebuilds and seeds a **separate** database `payrail_e2e` (never your demo `payrail`), starts its own backend
-(:4100) and Vite server (:5174), and drives Chromium through two files (9 tests):
+(:4100) and Vite server (:5174), and drives Chromium through three files (11 tests):
 - `e2e/customer.spec.js` — a two-vendor purchase paid at the gateway page (test UPI declined, non-test card refused, test
   card approved), an over-limit refund refused by the database, a valid partial refund, a same-key replay, a
   cross-customer access attempt, lost responses retried with the same key, and the finance gateway simulator.
+- `e2e/reports.spec.js` — finance Reports R1–R6 show exactly the API's (SQL function's) values, incl. the R3 chart and its
+  tooltip, filters (as-of, vendor/date window, month range); vendor Reports show only the vendor's own R4/R6; a customer
+  cannot open them.
 - `e2e/vendor-finance.spec.js` — vendor catalogue CRUD (incl. the refused delete of an ordered product); vendor → finance
   payout (same-key replay, overspend `PRF01`, failed → one reversal restores the funds, paid with a UTR); unverified
   (`PRV03`) and negative-balance vendors; customer → finance refund approve / reject; the sample settlement CSVs and
@@ -51,11 +54,13 @@ It needs the admin connection from the root `.env` like the backend tests (`back
 | `/vendor/products` | create (active/draft), edit, archive / reactivate, delete never-ordered products | `GET/POST/PATCH/DELETE /api/vendor/products` |
 | `/vendor/statement` | ledger lines with window-function running balance, IST date filter, opening/closing | `GET /api/vendor/statement` |
 | `/vendor/payouts` | request a payout (Idempotency-Key, same-key replay), history | `POST/GET /api/vendor/payouts` |
+| `/vendor/reports` | own balance decomposition (R6) and refund rate of own sales with a date window (R4) | `GET /api/vendor/reports/payables`, `/refund-risk` |
 | `/finance/refunds` | **finance:** refund queue, approve (shows the refund entry) / reject | `GET /api/finance/refunds`, `POST …/:id/approve|reject` |
 | `/finance/payouts` | payout queue: paid (UTR) / failed (shows request + reversal entries); vendor balances | `GET /api/finance/payouts`, `POST …/:id/complete`, `GET /api/finance/vendors` |
 | `/finance/settlements` | upload or paste a settlement CSV, per-row results, imported rows | `POST /api/finance/settlements/import` (text/csv), `GET /api/finance/settlements` |
 | `/finance/reconciliation` | as-of date, run reconciliation, category summary, filtered detail | `POST /api/finance/reconcile`, `GET /api/finance/reconciliation` |
 | `/finance/ledger` | trial balance (Σ D = Σ C) and latest journal entries by type | `GET /api/finance/trial-balance`, `/api/finance/journal-entries` |
+| `/finance/reports?r=R1…R6` | named reports: trial balance (Dr/Cr columns, as-of), vendor statement, monthly performance (Recharts bar chart + table), refund risk, settlement aging, vendor payables. Loaded lazily (own chunk with Recharts) | `GET /api/finance/reports/*` |
 
 ## Rules the UI follows (DEC-003, DEC-034, DEC-037)
 - **Money is never a JavaScript Number.** Paise arrive as decimal strings; `src/lib/money.js` formats and adds them with
@@ -70,6 +75,9 @@ It needs the admin connection from the root `.env` like the backend tests (`back
   skip the check to show the database refusing (`PRR01`, `PRF01`, `PRV03`). Errors show the API code and SQLSTATE.
 - **Finance decisions are not keyed** (DEC-039): approve/reject and paid/failed act on an existing row whose state machine
   makes a repeat harmless (same row back, nothing posted) and a contradicting decision fail (`PRS01`).
+- **Charts are display geometry only** (DEC-040): a bar's height uses `chartRupees(paise)` (whole rupees as a Number,
+  refuses values beyond 2^53); every amount shown as text, including chart tooltips, is formatted exactly from the string.
+  Reports never compute sums in the browser — totals and rates come from the SQL functions.
 - Sample settlement CSVs: `../samples/settlements/` (see its README for the expected results).
 
 ## Layout

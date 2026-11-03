@@ -31,3 +31,15 @@ test('helpers never go through floating point', () => {
   assert.throws(() => toPaise(12.5));
   assert.throws(() => toPaise('12.5'));
 });
+
+test('chartRupees is display-only geometry: whole rupees, refuses unsafe sizes; formatBps is exact', async () => {
+  const { chartRupees, formatBps } = await import('./money.js');
+  assert.equal(chartRupees('137833829'), 1378338);
+  assert.equal(chartRupees('99'), 0);
+  assert.equal(chartRupees('-1603942'), -16039);
+  assert.throws(() => chartRupees('9223372036854775807'), RangeError);
+  assert.equal(formatBps('448'), '4.48%');
+  assert.equal(formatBps('10000'), '100.00%');
+  assert.equal(formatBps('5'), '0.05%');
+  assert.equal(formatBps(null), '—');
+});
