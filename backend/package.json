@@ -10,6 +10,7 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "node --watch src/server.js",
+    "doctor": "node src/doctor.js",
     "test": "npm run test:api",
     "test:api": "NODE_ENV=test node --test --test-concurrency=1 test/api/*.test.js",
     "test:concurrency": "node --test --test-concurrency=1 test/concurrency/*.test.js"

@@ -1,84 +1,55 @@
 # PayRail — Handoff
 
-_Last updated: 2026-11-02, end of session 7 (Task 6)._
+_Last updated: 2026-11-13, session 9 (Task 7, closed after the team-Mac run)._
 
 ## Current milestone
-**T6 DONE** (acceptance evidenced in TEST_EVIDENCE T6-01…T6-09). Six named reports R1–R6 run in SQL, the API, the finance and vendor UIs, and psql; EXPLAIN evidence and the feature matrix are written. Next: **T7 — integration, regression tests, demo reliability**, then T8 (README + contributions confirmed by the team, ≤ 5-page design PDF, DEMO.md, VIVA.md).
+**T7 DONE** (TEST_EVIDENCE T7-01…T7-10). On Parth's Mac with Docker, after three fixes found there (doctor false alarm on placeholder DB passwords, e2e sample path with a space in the folder name, admin password drift in the volume): SQL 304 · API 46 · concurrency 12 · unit 5 · build · e2e 11. Next: **T8 — submission pack** (README with contributions **confirmed by the team**, design PDF ≤ 5 pages + source, `docs/DEMO.md`, `docs/VIVA.md`, final checklist). GL §7 submission date: 15 Nov; demos 17–19 Nov.
+
+The team's decision (13 Nov): a friend's separately modified version (shared as a zip in another chat) is **not** used. This line continues from `main` @ `b095d4f`, which includes the 3 Nov operations UI (PR #7) — kept.
 
 ## Working state
-- Mac folder `/Users/parth/payrail-dbms project`: git clone of `slashyash/PayRail`, `main` @ `d84123f` (Task 5 merged as PR #5). Session 7 wrote the T6 files into it **uncommitted** (Claude does not commit). The untracked `AGENTS.md` (a Codex copy of CLAUDE.md, not Claude's) was left untouched.
-- Files written by session 7:
-  - new: `db/schema/32_reports.sql`, `db/tests/30_reports.sql`, `db/tests/31_reports_seed.sql`, `db/reports/{README.md,run_reports.sql,explain_reports.sql}`, `backend/src/routes/reports.js`, `backend/test/api/reports.test.js`, `frontend/src/pages/finance/Reports.jsx`, `frontend/src/pages/vendor/Reports.jsx`, `frontend/e2e/reports.spec.js`, `docs/FEATURE_MATRIX.md`, `docs/evidence/T6_explain_seed.txt`
-  - changed: `db/schema/99_privileges.sql` (GRANT block for the reports), `db/schema/31_indexes.sql` (comment only), `backend/src/routes/finance.js` (trial balance = R1, mounts `/reports`), `backend/src/routes/vendor.js` (statement = R2, mounts `/reports`), `frontend/package.json` + `package-lock.json` (**recharts 3.10.1**), `frontend/src/App.jsx` (lazy report routes), `frontend/src/components/Layout.jsx` (Reports nav), `frontend/src/lib/money.js` (+ `chartRupees`, `formatBps`) + `money.test.js`, `frontend/src/pages/vendor/Statement.jsx` (uses R2 `reference`), `frontend/src/pages/finance/TrialBalance.jsx` (comment), `db/README.md`, `backend/README.md`, `frontend/README.md`
-  - docs: `CLAUDE.md`, `docs/{DECISIONS (DEC-040), TASKS, REQUIREMENTS, TEST_EVIDENCE, HANDOFF}.md` (Project copies kept in sync)
-- **Schema change** (new functions only, no table change): either rebuild (`db/reset_dev.sh --yes payrail` — DESTRUCTIVE for that DB — or a new Docker volume), or add them to an existing DB without losing data:
-  `docker compose exec -T db psql -U postgres -X -v ON_ERROR_STOP=1 -d payrail -f /payrail/db/schema/32_reports.sql -f /payrail/db/schema/99_privileges.sql` (verified on a T5-state copy, T6-07).
-- **New frontend dependency:** `cd frontend && npm ci`. Restart the backend.
-- Suggested commit: branch `task6-reports`, `git add -A db backend frontend docs CLAUDE.md` (not `AGENTS.md` unless the team wants it), push, PR.
+- Mac folder `/Users/parth/payrail-dbms project`: `main` @ `b095d4f`, clean before this session except the untracked `AGENTS.md` (not Claude's; left alone). Session 9 wrote its files there **uncommitted** (Claude does not commit).
+- Files written by session 9:
+  - new: `scripts/demo-reset.sh`, `scripts/test-all.sh`, `scripts/demo-race.mjs`, `backend/src/doctor.js`, `backend/test/api/operations.test.js`, `docs/RUNBOOK.md`
+  - changed: `db/schema/20_wf_common.sql` (`fn_vendor_balance` lookup as a scalar subquery), `backend/src/server.js` (startup DB check), `backend/package.json` (`doctor` script), `backend/README.md` (Troubleshooting → doctor), `frontend/src/pages/{Orders,Refunds,Catalogue}.jsx`, `frontend/src/pages/finance/Reconciliation.jsx`, `frontend/src/pages/vendor/Statement.jsx` (functional URL-filter updates)
+  - docs: `CLAUDE.md`, `docs/{TASKS,REQUIREMENTS,TEST_EVIDENCE,HANDOFF}.md` (Project copies kept in sync)
+- Schema change: one function body (`fn_vendor_balance`); no table change. An existing Docker volume keeps the old body (still correct thanks to the index); `scripts/demo-reset.sh --yes` installs the new one.
+- Suggested commit: branch `task7-integration`, `git add -A scripts backend db frontend docs CLAUDE.md` (not `AGENTS.md`), push, PR.
 
-## Commands actually run (session 7, cloud sandbox, PG 16.15 TCP/scram, node 22.23.4)
+## Commands actually run (session 9, cloud sandbox, PG 16.15, node 22.23.4)
 | Command | Result |
 |---|---|
-| `git clone https://github.com/slashyash/PayRail` (= Mac `main` @ `d84123f`) | ok |
-| baseline: SQL tests; `npm run test:api` | 273; 33/33 |
-| `db/tests/run_sql_tests.sh 30_reports.sql 31_reports_seed.sql` (+ 3 mutations, reverted) | 24 + 7 passed; mutations caught (one only after adding the IST month-boundary test) |
-| `npm run test:api` | 40/40 |
-| `npm run test:e2e` | 11 passed |
-| `psql -f db/reports/explain_reports.sql` on a fresh seeded `payrail` | `docs/evidence/T6_explain_seed.txt` |
-| upgrade path on a T5-state copy (`32_reports.sql` + `99_privileges.sql`) | applied, R1 balanced as `payrail_app` |
-| full regression: SQL; API; concurrency; backend audit; frontend unit; build | 304; 40/40; 12/12; 0 vulns; 4/4; built |
+| `git clone` (= Mac `b095d4f`), baseline all suites | 304 · 40/40 · 12/12 · unit pass · build · e2e 11 |
+| `node --test test/api/operations.test.js` (+2 mutations, reverted) | 6/6; both mutations caught |
+| EXPLAIN with the balance index dropped (rolled back) | `InitPlan 1`, one lookup |
+| `npm run doctor` in 4 failure modes | each FAIL with the right fix |
+| fresh cluster + fresh clone: `.env.example` → doctor → `demo-reset.sh --yes` → doctor | placeholders caught; build+seed 1 s; all ok |
+| `scripts/test-all.sh` (fresh clone and working copy) | 304 · 46/46 · 12/12 · 5/5 · build · e2e 11; demo DB untouched |
+| two resets, fingerprint compare | identical |
+| Playwright 22-page walk; timed W1–W4 dry run; `demo-race.mjs vendor1 5`; reset under a running backend | no console errors/5xx (except the intentional 409); 2 of 5 payouts accepted, exact balance; logins 200 after reset |
 
-## To try it on the Mac (not run there yet)
-```bash
-cd ~/"payrail-dbms project"
-docker compose up -d db
-docker compose exec -T db psql -U postgres -X -v ON_ERROR_STOP=1 -d payrail \
-  -f /payrail/db/schema/32_reports.sql -f /payrail/db/schema/99_privileges.sql   # once, if the volume predates T6
-docker compose exec -T db bash /payrail/db/tests/run_sql_tests.sh             # expect 304 passed
-docker compose exec -T db psql -U postgres -X -d payrail -f /payrail/db/reports/run_reports.sql
-cd backend && npm ci && npm start                                             # terminal 1
-cd frontend && npm ci && npm run dev                                          # terminal 2 → /finance/reports, /vendor/reports
-PAYRAIL_REBUILD_VIA_DOCKER=1 npm run test:e2e                                 # 11 tests
-```
+## Mac-specific notes (found in T7-09)
+- The Mac `.env` still uses the example's placeholder DB passwords; they work (doctor warns). Do **not** change them in `.env` alone — the database keeps its stored passwords (ALTER ROLE needed).
+- The admin (`postgres`) password was re-synced to `.env` with `ALTER ROLE` (non-destructive); the Node test suites need it.
+- Chromium for Playwright is installed on the Mac now.
+- Session-9 files (incl. `scripts/`, `backend/src/doctor.js`, `test-logs/` in `.gitignore`, `frontend/e2e/vendor-finance.spec.js`) are uncommitted in the Mac folder.
 
-## Demo path for T6 (~3 min)
-1. **Finance → Reports → R1:** Σ D = Σ C, Dr/Cr balance columns (vendor 7 in the Dr column = negative balance); set as-of 2026-09-30 → still balanced, smaller totals.
-2. **R2:** vendor 7, from 2026-10-01 → opening ₹20,496.48 continues into the first running balance; explain "filter after the window".
-3. **R3:** chart + table; hover a bar (exact tooltip); point out the date basis of each column and the cumulative window.
-4. **R4:** vendor 7 high (14.18 %), explain cohort numerator/denominator and the fan-out trap.
-5. **R5:** five categories with age buckets; total net cash = what the bank received for matched rows only.
-6. **R6:** decomposition identity and "Ledger ✓" cross-check between payouts and the ledger.
-7. **Vendor7 → Reports:** own R6 and R4 only. psql: `db/reports/run_reports.sql`; EXPLAIN: the index experiment at the end of `docs/evidence/T6_explain_seed.txt`.
+## What T7 demonstrates (viva notes)
+- Reproducibility: deterministic seed (fixed clock `fn_now`, md5-keyed choices) → identical ledger after every reset; explicit as-of date for reconciliation.
+- Operational safety: destructive commands need `--yes` and only accept `payrail`/`payrail_<suffix>`; tests never touch the demo DB; the app never runs as owner/superuser (the doctor checks it).
+- Concurrency, live: `demo-race.mjs` — simultaneous payouts serialise on the vendor account row lock (`FOR UPDATE`), at most the affordable ones succeed.
+- Query planning: a scalar subquery becomes an InitPlan evaluated once, instead of a per-row function call on a sequential scan.
 
-## What T6 demonstrates (viva notes)
-See `db/reports/README.md` (per-report SQL walkthrough, EXPLAIN findings, viva questions) and `docs/FEATURE_MATRIX.md`.
-- Window function with partition push-down and post-window filtering (R2); `GROUPING SETS` totals/subtotals (R1, R5); `generate_series` + month-grain CTEs (R3); `rank()` with a sample threshold (R4); cross-relation consistency check (R6).
-- Grain discipline: aggregate each source before joining; the fixture shows the naive join's wrong number.
-- Inlined SQL functions → real EXPLAIN plans; the balance index cuts the workflow balance query from 2,765 to 26 buffers on the seed.
-
-## Known blockers / risks / T7 candidates
-- T6 not yet run on a team Mac (see TEST_EVIDENCE "Not run yet").
-- **Found in T6, not fixed (T7 candidates):**
-  - Other pages (`vendor/Statement.jsx`, `finance/Reconciliation.jsx`, …) update URL filters from a closure copy of the search params; two very quick changes can overwrite each other (the Reports pages use a functional update — fixed there after an e2e failure). Low impact for humans; worth aligning.
-  - `fn_vendor_balance` evaluates `fn_vendor_payable_account()` per row if the planner ever chooses a sequential scan (seen with the index dropped, T6-05). The index prevents it; wrapping the lookup as `(SELECT fn_vendor_payable_account(...))` would make it robust. Workflow function → needs the concurrency suite re-run.
-- First Mac run earlier needed `.env` secrets and an `ALTER ROLE` password fix (see `backend/README.md` Troubleshooting); T7 should make startup failures obvious.
-- PROPOSED decisions (DEC-002, DEC-005…DEC-022, DEC-035) are implemented as defaults; flag objections.
-- Schedule: 13 days to the GL §7 submission date (15 Nov). T7 next, then T8 (PDF ≤ 5 pages, README contributions **confirmed by the team**).
+## Known blockers / risks
+- `explain_reports.sql` and a live human demo walk have only run in the sandbox.
+- Node on the Mac was v26 at T3; `.nvmrc` says 22. Works so far; the doctor warns.
+- PROPOSED decisions (DEC-002, DEC-005…DEC-022, DEC-035) implemented as defaults; flag objections before the PDF.
+- Schedule: 2 days to 15 Nov. T8 needs the team for contributions.
 
 ## How the next session should start
-1. Read `CLAUDE.md`, `docs/HANDOFF.md`, `docs/TASKS.md`, `docs/DECISIONS.md` from the Mac folder; `git status` / `git log` there.
-2. Get the code into the sandbox: `git clone -b <branch> https://github.com/slashyash/PayRail` if pushed, plus any uncommitted Mac files; start a PG16 cluster (CLAUDE.md recipe), write a sandbox root `.env`, run SQL tests (304), `npm run test:api` (40), `test:concurrency` (12), `cd frontend && npm ci && npm run test:e2e` (11).
-3. Implement T7, write changed files back, update docs.
+1. Read `CLAUDE.md`, this file, `docs/TASKS.md`, `docs/DECISIONS.md` from the Mac folder; `git status` / `git log` there (expect the T7 files committed or still uncommitted).
+2. Sandbox: `git clone` + copy any uncommitted Mac files; PG16 recipe from CLAUDE.md; `scripts/test-all.sh`.
+3. T8.
 
 ## Next concrete action
-T7: clean-install rehearsal from a fresh clone and fresh DB (Docker path and local path), a one-command startup check that names the `.env` / role-password problem, a safe demo reset + recovery script, fix the two T6 findings above, then a full regression and a timed demo dry run that DEMO.md (T8) can follow.
-
-
-## Operations UI update (2026-11-03)
-Implemented read-only finance overview, reconciliation summary and differences, order/payout detail routes, and exact-record recovery after uncertain finance decisions. No financial schema or workflow changes. Validation results will be recorded after checks.
-
-Validation: frontend production build passed; backend route syntax check passed. Docker daemon unavailable on this machine, so database/API/browser integration checks have not run for this update. Historical test counts do not validate these changes.
-
-Final local checks: production build passed after record links; existing money unit tests 4/4 passed; backend syntax and git diff whitespace checks passed. Added a focused recovery test for committed, pending, unreadable, rejected, and conflicting-UTR outcomes.
-
-Session 8 (2026-11-03): full regression run in the cloud sandbox: SQL 304, API 40/40, concurrency 12/12, frontend unit 5/5, build ok, e2e 11/11 after updating three e2e specs for the new `/finance` landing page (see TEST_EVIDENCE). The new endpoints were checked by hand and in a Playwright walk, but **they still have no automated API test**. Next: add `backend/test/api` cases for `/finance/overview`, `/finance/trace/:kind/:id`, `/finance/{refunds,payouts}/:id`, `journal-entries?entry_id=` (incl. 403 for vendor/customer), then continue T7.
+T8: (1) ask the team for actual contributions per member; (2) rewrite `README.md` (still the midsem version) from the implemented system + `docs/RUNBOOK.md`; (3) updated design PDF ≤ 5 pages from the implemented schema (ER, relational schema, keys/constraints, normalization against real FDs, design decisions) with editable source; (4) `docs/DEMO.md` (10–12 min, based on the T7-08b dry run: order #370, over-refund PRR01, refund approve, payout failed → reversal, settlement import + reconciliation, reports, `demo-race.mjs`) and `docs/VIVA.md`; (5) final requirements checklist.

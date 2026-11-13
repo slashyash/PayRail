@@ -9,6 +9,7 @@
 // Database effects are checked through the API as BigInt paise.
 // NOTE: the settlement test expects the seeded settlement state (default: the DB is rebuilt per run).
 import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { expect, test } from '@playwright/test';
 import { formatINR } from '../src/lib/money.js';
 
@@ -283,7 +284,8 @@ test('settlement import (sample CSVs) and reconciliation; an unknown reference p
   await login(page, 'finance@payrail.demo', /\/finance$/);
   await page.getByRole('link', { name: 'Settlements' }).click();
   const upload = async (file) => {
-    await page.setInputFiles('#csv-file', new URL(file, SAMPLES).pathname);
+    // fileURLToPath, not .pathname: a space in the folder name would stay as %20
+    await page.setInputFiles('#csv-file', fileURLToPath(new URL(file, SAMPLES)));
     await page.getByRole('button', { name: 'Import' }).click();
     await expect(page.getByTestId('import-results')).toBeVisible();
   };

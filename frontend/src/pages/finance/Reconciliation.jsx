@@ -42,10 +42,13 @@ export default function Reconciliation() {
 
   function update(changes) {
     if ('as_of' in changes) setRun(null);
-    const next = new URLSearchParams(params);
-    for (const [k, v] of Object.entries(changes)) if (v) next.set(k, v); else next.delete(k);
-    if (!('page' in changes)) next.delete('page');
-    setParams(next, { replace: true });
+    // functional update: two quick changes in a row must not overwrite each other
+    setParams((prev) => {
+      const next = new URLSearchParams(prev);
+      for (const [k, v] of Object.entries(changes)) if (v) next.set(k, v); else next.delete(k);
+      if (!('page' in changes)) next.delete('page');
+      return next;
+    }, { replace: true });
   }
 
   async function reconcile() {

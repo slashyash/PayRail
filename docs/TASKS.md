@@ -12,7 +12,7 @@ Target dates are a suggested schedule against the GL §7 submission date (15 Nov
 | T4 | Customer workflow UI | T3 | 9–10 Nov | DONE (2026-11-02) |
 | T5 | Vendor and finance workflow UI | T3 (parallel with T4) | 10–11 Nov | DONE (2026-11-02) |
 | T6 | SQL reports and DBMS evidence | T2 (SQL), T4/T5 (UI exposure) | 12 Nov | DONE (2026-11-02) |
-| T7 | Integration, regression tests, demo reliability | T4, T5, T6 | 13–14 Nov | TODO |
+| T7 | Integration, regression tests, demo reliability | T4, T5, T6 | 13–14 Nov | DONE (2026-11-13; sandbox + team Mac T7-09) |
 | T8 | README, final design PDF, DEMO, VIVA | T7 (contributions need team input) | 14–15 Nov | TODO |
 
 ---
@@ -103,9 +103,18 @@ Files: `db/schema/32_reports.sql` (+ GRANTs in `99_privileges.sql`, comment in `
 - [x] Feature matrix (`docs/FEATURE_MATRIX.md`) with files, tests and demo paths; report walkthrough (`db/reports/README.md`)
 **Acceptance (PI Task 6):** ≥ 5 named non-trivial reports ✔ (six); agree with small hand-checkable fixtures ✔ (T6-01, `30_reports.sql`) and seeded records ✔ (`31_reports_seed.sql`); finance UI shows all six, vendor UI shows vendor-scoped R2/R4/R6 ✔ (T6-03); no join fan-out (aggregated per grain, tested) ✔; date/vendor filters ✔; joins/grouping/CTEs/windows explained ✔ (`db/reports/README.md`); EXPLAIN (ANALYZE, BUFFERS) collected, indexes justified without invented speed-ups ✔ (T6-05); feature matrix with exact demo commands / UI paths ✔. Not yet run on a team Mac.
 
-## T7 — Integration and demo reliability — TODO
-Clean-install rehearsal (fresh clone + fresh DB), full test run, browser smoke tests where feasible, fixed demo as-of date, safe reset/recovery commands, fix found issues.
-**Acceptance:** as PI Task 7.
+## T7 — Integration and demo reliability — DONE (2026-11-13)
+Files: new `scripts/{demo-reset.sh,test-all.sh,demo-race.mjs}`, `backend/src/doctor.js` (+ `npm run doctor`, startup check in `server.js`), `backend/test/api/operations.test.js`, `docs/RUNBOOK.md`; changed `db/schema/20_wf_common.sql` (`fn_vendor_balance` InitPlan), `frontend/src/pages/{Orders,Refunds,Catalogue}.jsx`, `finance/Reconciliation.jsx`, `vendor/Statement.jsx` (functional URL-filter updates), `backend/package.json`.
+- [x] Baseline regression on `main` @ `b095d4f` (T7-01)
+- [x] API tests for the 3 Nov operations endpoints, with mutation checks (T7-02)
+- [x] T6 findings fixed: URL filters use functional updates on all pages; `fn_vendor_balance` lookup runs once even on a seq scan (T7-03)
+- [x] Startup check naming `.env` / role-password / port / old-schema / privilege problems, also run at backend start (T7-04)
+- [x] Safe demo reset (guarded, DB `payrail` only, Docker or local, re-syncs the app password) and recovery table (`docs/RUNBOOK.md`); reset with a running backend (T7-08d)
+- [x] Clean-install rehearsal from a fresh clone + fresh cluster following the runbook (T7-05); full suite via `scripts/test-all.sh` (T7-06)
+- [x] Fixed demo inputs: seed byte-identical across resets (T7-07); as-of 2026-10-31; first new order after a reset is #370
+- [x] Demo path walk of all 22 pages, timed UI dry run of W1–W4, live concurrency script (T7-08, 08b, 08c): no console errors / 5xx except the intentional 409
+- [x] Team Mac with Docker (T7-09a/b, T7-10, T7-09): found and fixed a doctor false alarm, an e2e path bug with spaces in the folder name, and an admin-password drift in the Docker volume; then all suites green there
+**Acceptance (PI Task 7):** documented setup works from a fresh checkout/database ✔ (local path T7-05; Docker on a team Mac T7-09); every workflow reproducible ✔ (e2e + dry run on the reset demo DB); evidence separates executed checks from limitations ✔ (TEST_EVIDENCE T7, "Not run yet"); no unexplained console/API errors in the demo path ✔ (T7-08/08b).
 
 ## T8 — Submission pack — TODO
 README (actual contributions **confirmed by team**), final design PDF ≤ 5 pages + editable source, DEMO.md (10–12 min), VIVA.md, final requirements checklist.

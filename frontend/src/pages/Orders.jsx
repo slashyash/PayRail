@@ -15,10 +15,13 @@ export default function Orders() {
   const orders = useApi(() => api.get('/orders', { status: status || undefined, page, page_size: PAGE_SIZE }), [status, page]);
 
   function update(changes) {
-    const next = new URLSearchParams(params);
-    for (const [k, v] of Object.entries(changes)) if (v) next.set(k, v); else next.delete(k);
-    if (!('page' in changes)) next.delete('page');
-    setParams(next, { replace: true });
+    // functional update: two quick changes in a row must not overwrite each other
+    setParams((prev) => {
+      const next = new URLSearchParams(prev);
+      for (const [k, v] of Object.entries(changes)) if (v) next.set(k, v); else next.delete(k);
+      if (!('page' in changes)) next.delete('page');
+      return next;
+    }, { replace: true });
   }
 
   return (

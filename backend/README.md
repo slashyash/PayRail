@@ -89,6 +89,8 @@ and delivers it through the **same** handler as `POST /api/gateway/callback`. Co
 `src/gateway.js` HMAC + simulator · `src/settlementCsv.js` bounded CSV parser · `src/routes/*` · `test/api/*` · `test/concurrency/*`.
 
 ## Troubleshooting
+First run `npm run doctor` (read-only): it checks `.env`, the `payrail_app` login, schema version, privileges, seed and
+trial balance, and prints the fix for each failure (`src/doctor.js`; also run once at `npm start`). See `docs/RUNBOOK.md`.
 - **Login / `/api/health` returns 500 while `docker compose ps` says healthy:** the `payrail_app` password in the database
   differs from `.env` — the Docker volume was first created with an older `APP_DB_PASSWORD` (the init hook runs only on an
   empty volume). Non-destructive fix, then restart the backend:

@@ -64,11 +64,13 @@ END $$;
 
 -- Available balance of a vendor = credit-normal balance of its payable
 -- account, read from the ledger (never stored). Can be negative (DEC-007).
+-- The account lookup is a scalar subquery so it runs once (an InitPlan) even
+-- if the planner ever chooses a sequential scan of ledger_lines (T6-05 finding).
 CREATE FUNCTION fn_vendor_balance(p_vendor_id bigint) RETURNS bigint
 LANGUAGE sql STABLE SET search_path = payrail, pg_temp
 RETURN (SELECT coalesce(sum(CASE WHEN l.direction = 'C' THEN l.amount_paise ELSE -l.amount_paise END), 0)::bigint
           FROM ledger_lines l
-         WHERE l.account_id = fn_vendor_payable_account(p_vendor_id));
+         WHERE l.account_id = (SELECT fn_vendor_payable_account(p_vendor_id)));
 
 -- Derived order total = Σ quantity × snapshot price (DEC-016).
 CREATE FUNCTION fn_order_total(p_order_id bigint) RETURNS bigint
