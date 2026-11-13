@@ -16,3 +16,4 @@ playwright-report/
 .idea/
 .vscode/
 .Rhistory
+test-logs/
