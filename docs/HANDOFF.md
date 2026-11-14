@@ -1,32 +1,32 @@
 # PayRail — Handoff
 
-_Last updated: 2026-11-13, session 9 (Task 7, closed after the team-Mac run)._
+_Last updated: 2026-11-13, session 9 (Task 7 closed; Task 8 documents written)._
 
 ## Current milestone
-**T7 DONE** (TEST_EVIDENCE T7-01…T7-10). On Parth's Mac with Docker, after three fixes found there (doctor false alarm on placeholder DB passwords, e2e sample path with a space in the folder name, admin password drift in the volume): SQL 304 · API 46 · concurrency 12 · unit 5 · build · e2e 11. Next: **T8 — submission pack** (README with contributions **confirmed by the team**, design PDF ≤ 5 pages + source, `docs/DEMO.md`, `docs/VIVA.md`, final checklist). GL §7 submission date: 15 Nov; demos 17–19 Nov.
+**T8 — submission pack: documents done (13 Nov), team items open.** T0–T7 DONE. The course's final-submission guidelines (received 13 Nov) supersede the earlier assumptions: Google Classroom by **15 Nov 2026 11:59 PM** (GitHub link + design PDF ≤ 5 pages + one-page Demo Sheet PDF; tag `final`, hash in README and Demo Sheet); demo **17–19 Nov, 7 min + 3–5 min viva**, all members present.
 
-The team's decision (13 Nov): a friend's separately modified version (shared as a zip in another chat) is **not** used. This line continues from `main` @ `b095d4f`, which includes the 3 Nov operations UI (PR #7) — kept.
+The team's decision (13 Nov): the project is split into five parts (README contributions table); **Name/ID per part, Team ID / lab section and members on the Demo Sheet are left blank for the team to fill.** A friend's separately modified version (zip in another chat) is not used.
 
 ## Working state
-- Mac folder `/Users/parth/payrail-dbms project`: `main` @ `b095d4f`, clean before this session except the untracked `AGENTS.md` (not Claude's; left alone). Session 9 wrote its files there **uncommitted** (Claude does not commit).
-- Files written by session 9:
-  - new: `scripts/demo-reset.sh`, `scripts/test-all.sh`, `scripts/demo-race.mjs`, `backend/src/doctor.js`, `backend/test/api/operations.test.js`, `docs/RUNBOOK.md`
-  - changed: `db/schema/20_wf_common.sql` (`fn_vendor_balance` lookup as a scalar subquery), `backend/src/server.js` (startup DB check), `backend/package.json` (`doctor` script), `backend/README.md` (Troubleshooting → doctor), `frontend/src/pages/{Orders,Refunds,Catalogue}.jsx`, `frontend/src/pages/finance/Reconciliation.jsx`, `frontend/src/pages/vendor/Statement.jsx` (functional URL-filter updates)
-  - docs: `CLAUDE.md`, `docs/{TASKS,REQUIREMENTS,TEST_EVIDENCE,HANDOFF}.md` (Project copies kept in sync)
-- Schema change: one function body (`fn_vendor_balance`); no table change. An existing Docker volume keeps the old body (still correct thanks to the index); `scripts/demo-reset.sh --yes` installs the new one.
-- Suggested commit: branch `task7-integration`, `git add -A scripts backend db frontend docs CLAUDE.md` (not `AGENTS.md`), push, PR.
+- Mac folder: `main` @ `2fb6739` (PR #8 = Task 7 merged; branch deleted). Session 9's T8 files were written there **uncommitted**: `README.md`, `docs/{DEMO,VIVA,TASKS,REQUIREMENTS,TEST_EVIDENCE,HANDOFF}.md`, `CLAUDE.md`, `docs/design/*`, `docs/submission/*`, `scripts/check-demo-sheet.sh`.
+- No code or schema change in T8.
 
-## Commands actually run (session 9, cloud sandbox, PG 16.15, node 22.23.4)
+## What is left for the team (in order)
+1. Fill the Name/ID columns in `README.md` (Individual contributions) with each member's actual work.
+2. Open `docs/submission/PayRail_Demo_Sheet.docx`, fill Team ID / lab section and Members, then export it as PDF over `PayRail_Demo_Sheet.pdf` (keep one page).
+3. Run `scripts/test-all.sh` and `scripts/check-demo-sheet.sh`; commit; then follow README “Submitting” (hash into README + Demo Sheet, README-only commit, `git tag final`, push the tag).
+4. Upload to Google Classroom: repo link, `docs/design/PayRail_Database_Design.pdf`, the Demo Sheet PDF.
+5. Rehearse `docs/DEMO.md` twice with a timer (7:00 hard stop).
+
+## Commands actually run (session 9, T8)
 | Command | Result |
 |---|---|
-| `git clone` (= Mac `b095d4f`), baseline all suites | 304 · 40/40 · 12/12 · unit pass · build · e2e 11 |
-| `node --test test/api/operations.test.js` (+2 mutations, reverted) | 6/6; both mutations caught |
-| EXPLAIN with the balance index dropped (rolled back) | `InitPlan 1`, one lookup |
-| `npm run doctor` in 4 failure modes | each FAIL with the right fix |
-| fresh cluster + fresh clone: `.env.example` → doctor → `demo-reset.sh --yes` → doctor | placeholders caught; build+seed 1 s; all ok |
-| `scripts/test-all.sh` (fresh clone and working copy) | 304 · 46/46 · 12/12 · 5/5 · build · e2e 11; demo DB untouched |
-| two resets, fingerprint compare | identical |
-| Playwright 22-page walk; timed W1–W4 dry run; `demo-race.mjs vendor1 5`; reset under a running backend | no console errors/5xx (except the intentional 409); 2 of 5 payouts accepted, exact balance; logins 200 after reset |
+| fresh clone `main` @ `2fb6739`; `db/reset_dev.sh --yes payrail`; catalog queries | counts in TEST_EVIDENCE T8-00 |
+| `docs/design/build.sh` | 5-page PDF; pages viewed |
+| column check design §5 vs `information_schema` | 82/82 |
+| `fill_demo` (python-docx on the course template) → LibreOffice PDF | 1 page; viewed |
+| `scripts/check-demo-sheet.sh` | 22/22 ok |
+| DEMO.md psql commands in the sandbox | expected errors (T8-04) |
 
 ## Mac-specific notes (found in T7-09)
 - The Mac `.env` still uses the example's placeholder DB passwords; they work (doctor warns). Do **not** change them in `.env` alone — the database keeps its stored passwords (ALTER ROLE needed).
@@ -43,13 +43,14 @@ The team's decision (13 Nov): a friend's separately modified version (shared as 
 ## Known blockers / risks
 - `explain_reports.sql` and a live human demo walk have only run in the sandbox.
 - Node on the Mac was v26 at T3; `.nvmrc` says 22. Works so far; the doctor warns.
-- PROPOSED decisions (DEC-002, DEC-005…DEC-022, DEC-035) implemented as defaults; flag objections before the PDF.
-- Schedule: 2 days to 15 Nov. T8 needs the team for contributions.
+- PROPOSED decisions (DEC-002, DEC-005…DEC-022, DEC-035) are implemented and described in the design PDF; nobody objected.
+- Schedule: submission 15 Nov 11:59 PM. Open items are the team's (names/IDs, Team ID, tag).
+- The design PDF's team table lists the five submitted names and IDs (from the project instructions); only the per-part ownership is blank.
 
 ## How the next session should start
-1. Read `CLAUDE.md`, this file, `docs/TASKS.md`, `docs/DECISIONS.md` from the Mac folder; `git status` / `git log` there (expect the T7 files committed or still uncommitted).
+1. Read `CLAUDE.md`, this file, `docs/TASKS.md`, `docs/DECISIONS.md` from the Mac folder; `git status` / `git log` there (expect the T8 files committed or still uncommitted).
 2. Sandbox: `git clone` + copy any uncommitted Mac files; PG16 recipe from CLAUDE.md; `scripts/test-all.sh`.
-3. T8.
+3. Finish whatever is open in “What is left for the team”.
 
 ## Next concrete action
-T8: (1) ask the team for actual contributions per member; (2) rewrite `README.md` (still the midsem version) from the implemented system + `docs/RUNBOOK.md`; (3) updated design PDF ≤ 5 pages from the implemented schema (ER, relational schema, keys/constraints, normalization against real FDs, design decisions) with editable source; (4) `docs/DEMO.md` (10–12 min, based on the T7-08b dry run: order #370, over-refund PRR01, refund approve, payout failed → reversal, settlement import + reconciliation, reports, `demo-race.mjs`) and `docs/VIVA.md`; (5) final requirements checklist.
+Team: steps 1–5 above. Claude (if asked): re-export the Demo Sheet after the team fills it, re-run `scripts/check-demo-sheet.sh` if any schema file changes, help with the final tag. Claude does not push, tag or submit.

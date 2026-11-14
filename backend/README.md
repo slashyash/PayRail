@@ -90,7 +90,7 @@ and delivers it through the **same** handler as `POST /api/gateway/callback`. Co
 
 ## Troubleshooting
 First run `npm run doctor` (read-only): it checks `.env`, the `payrail_app` login, schema version, privileges, seed and
-trial balance, and prints the fix for each failure (`src/doctor.js`; also run once at `npm start`). See `docs/RUNBOOK.md`.
+trial balance, and prints the fix for each failure (`src/doctor.js`; also run once at `npm start`).
 - **Login / `/api/health` returns 500 while `docker compose ps` says healthy:** the `payrail_app` password in the database
   differs from `.env` — the Docker volume was first created with an older `APP_DB_PASSWORD` (the init hook runs only on an
   empty volume). Non-destructive fix, then restart the backend:

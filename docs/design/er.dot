@@ -1,0 +1,52 @@
+// PayRail conceptual ER/EER diagram (Chen notation). Render: dot -Tsvg er.dot -o er.svg
+graph ER {
+  graph [layout=dot, rankdir=TB, nodesep=0.15, ranksep=0.18, fontname="Inter", splines=true, pad=0.05];
+  node  [fontname="Inter", fontsize=13, margin="0.06,0.03"];
+  edge  [fontname="Inter", fontsize=12, color="#444444"];
+
+  // entities (double border = weak entity)
+  node [shape=box, style=filled, fillcolor="#e8eef7", color="#2f4f7f", penwidth=1.2];
+  USER; VENDOR; PRODUCT; ORDER; PAYMENT; REFUND; PAYOUT; GATEWAY_SETTLEMENT [label="GATEWAY_\nSETTLEMENT"];
+  ACCOUNT; JOURNAL_ENTRY [label="JOURNAL_\nENTRY"];
+  ORDER_ITEM [label="ORDER_ITEM", peripheries=2]; LEDGER_LINE [label="LEDGER_LINE", peripheries=2];
+  VA [label="VENDOR\nACCOUNT"]; SA [label="PLATFORM | GATEWAY\nTAX | BANK ACCOUNT"];
+
+  // relationships (double diamond = identifying)
+  node [shape=diamond, style=filled, fillcolor="#fdf3e1", color="#9a6b12", penwidth=1.1, fontsize=11, margin="0.02,0.01"];
+  OWNS; SELLS; PLACES; CONTAINS [peripheries=2]; OF [label="OF"]; PAID_BY [label="PAID\nBY"]; REFUNDS_R [label="REFUNDS"];
+  PAID_OUT [label="PAID\nOUT TO"]; HOLDS; RECORDS; REVERSES; HAS_LINE [label="HAS\nLINE", peripheries=2]; POSTED_TO [label="POSTED\nTO"];
+  SETTLES [style="filled,dashed"];
+
+  // specialisation
+  node [shape=circle, style=filled, fillcolor="#ffffff", color="#2f4f7f", label="d", fontsize=10, width=0.28, fixedsize=true];
+  SPEC;
+
+  // key / partial-key / derived / discriminator attributes
+  node [shape=ellipse, style=filled, fillcolor="#ffffff", color="#777777", fontsize=11, width=0, height=0, fixedsize=false, margin="0.03,0.01"];
+  a_email [label=<<U>email</U>>]; a_gstin [label=<gstin (opt.)>];
+  a_line [label=<<U>line_no</U> (partial key)>]; a_lline [label=<<U>line_no</U> (partial key)>];
+  a_total [label="total, status", style="filled,dashed"]; a_bal [label="balance", style="filled,dashed"];
+  a_disc [label=<owner_type>]; a_gref [label=<<U>gateway_ref</U>>];
+  a_snap [label="unit_price, commission_bps\n(snapshots)"];
+
+  // edges: "=" total participation drawn as double line (color list)
+  USER -- OWNS [label="1"]; OWNS -- VENDOR [label="1", color="#444444:#ffffff:#444444"];
+  VENDOR -- SELLS [label="1"]; SELLS -- PRODUCT [label="N", color="#444444:#ffffff:#444444"];
+  USER -- PLACES [label="1"]; PLACES -- ORDER [label="N", color="#444444:#ffffff:#444444"];
+  ORDER -- CONTAINS [label="1"]; CONTAINS -- ORDER_ITEM [label="N", color="#444444:#ffffff:#444444"];
+  PRODUCT -- OF [label="1"]; OF -- ORDER_ITEM [label="N", color="#444444:#ffffff:#444444"];
+  ORDER -- PAID_BY [label="1"]; PAID_BY -- PAYMENT [label="N", color="#444444:#ffffff:#444444"];
+  ORDER_ITEM -- REFUNDS_R [label="1"]; REFUNDS_R -- REFUND [label="N", color="#444444:#ffffff:#444444"];
+  VENDOR -- PAID_OUT [label="1"]; PAID_OUT -- PAYOUT [label="N", color="#444444:#ffffff:#444444"];
+  VENDOR -- HOLDS [label="1", color="#444444:#ffffff:#444444"]; HOLDS -- VA [label="1", color="#444444:#ffffff:#444444"];
+  ACCOUNT -- SPEC [color="#444444:#ffffff:#444444"]; SPEC -- VA; SPEC -- SA;
+  PAYMENT -- RECORDS [label="1"]; REFUND -- RECORDS [label="1"]; PAYOUT -- RECORDS [label="1"]; GATEWAY_SETTLEMENT -- RECORDS [label="1"];
+  RECORDS -- JOURNAL_ENTRY [label="0..1 each"];
+  JOURNAL_ENTRY -- REVERSES [label="1"]; REVERSES -- JOURNAL_ENTRY [label="0..1"];
+  JOURNAL_ENTRY -- HAS_LINE [label="1", color="#444444:#ffffff:#444444"]; HAS_LINE -- LEDGER_LINE [label="N ≥ 2", color="#444444:#ffffff:#444444"];
+  ACCOUNT -- POSTED_TO [label="1"]; POSTED_TO -- LEDGER_LINE [label="N", color="#444444:#ffffff:#444444"];
+  GATEWAY_SETTLEMENT -- SETTLES [label="0..1", style=dashed]; SETTLES -- PAYMENT [label="0..1", style=dashed]; SETTLES -- REFUND [label="0..1", style=dashed];
+
+  USER -- a_email; VENDOR -- a_gstin; ORDER_ITEM -- a_line; ORDER_ITEM -- a_snap; LEDGER_LINE -- a_lline;
+  ORDER -- a_total; ACCOUNT -- a_bal; ACCOUNT -- a_disc; GATEWAY_SETTLEMENT -- a_gref;
+}

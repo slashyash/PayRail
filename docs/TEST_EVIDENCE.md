@@ -234,6 +234,19 @@ Environment: PostgreSQL 16.15 (`initdb`, TCP, scram), node 22.23.4, Chromium (Pl
 | T7-10 | Fixes for T7-09b, checked in the sandbox | (1) `vendor-finance.spec.js` uses `fileURLToPath`; whole repo copied to `/home/claude/space test/payrail dbms` → `scripts/test-all.sh`: SQL 304 · API 46 · conc 12 · unit 5 · build · **e2e 11 passed**; reverting the line reproduces the Mac error (`space%20test/…`), restoring → 1 passed. (2) doctor `admin login (tests)` check: correct password → ok; wrong → warn with the `ALTER ROLE postgres …` fix; the fix command's quoting checked on a deliberately broken admin password → login ok again. (3) `test-all.sh` keeps logs in `test-logs/` and prints the fix for missing Chromium / admin password / DB down | PASS |
 | T7-09 | **Team Mac (Parth), 2026-11-13, Docker Desktop, Node v26.13.0:** `docker compose exec -T db psql -U postgres -d postgres -c "ALTER ROLE postgres PASSWORD '…'"` (admin password synced to `.env`, non-destructive); `npm run doctor`; `scripts/test-all.sh` (logs read from `test-logs/`) | SQL **304 passed** · API **46/46** · concurrency **12/12** · unit **5/5** · build ok · e2e **11 passed** (16.5 s) | PASS |
 
+## Task 8 — submission documents (cloud sandbox, 2026-11-13, session 9)
+Base: fresh clone of `main` @ `2fb6739` (= Mac after PR #8), rebuilt + seeded `payrail`.
+
+| ID | Check | Result |
+|---|---|---|
+| T8-00 | catalog counts used in the documents (`pg_constraint`, `pg_trigger`, `pg_indexes`, `pg_proc`, `pg_views`) and seed rows | tables 12 · PK 12 · FK 16 · UNIQUE 19 · CHECK 48 · user triggers 24 (2 constraint triggers) · indexes 42 · views 4 · rows 5,769 · trial balance ₹80,14,286.31 both sides |
+| T8-01 | `docs/design/build.sh` (Graphviz + Chromium) → `pdfinfo` | **5 pages**, A4; all pages viewed as images: no overflow, ER figure readable |
+| T8-02 | every column of the 12 tables (`information_schema.columns`, 82) present in the matching row of design §5 | 82/82 |
+| T8-03 | Demo Sheet filled from the course template (python-docx), converted with LibreOffice → `pdfinfo`; `scripts/check-demo-sheet.sh` | **1 page**, viewed; 22/22 file:line references point at the named object |
+| T8-04 | DEMO.md commands in the sandbox: UPDATE / DELETE on a posted ledger row as the administrator; INSERT and `SET ROLE payrail_app; DELETE` as the app role; `VERBOSE=1 run_sql_tests.sh 10_ledger.sql` | append-only error for UPDATE and DELETE; `permission denied for table ledger_lines` twice; 24 checks listed (empty/single-line/unbalanced → PRL01, late append → PRL03) |
+| T8-06 | 14 Nov revision (team request): data population removed; §10 relational schema diagram added, generated from the catalog by `docs/design/schema_diagram.py` (12 tables, 82 columns, 16 FK edges — the script asserts 12 and 16); architecture table moved to §6 (page 3); sections renumbered; `docs/design/build.sh` | **5 pages**; pages 3–5 viewed, page 5 also at 200 dpi (table text inside its boxes, edges routed outside tables) |
+| T8-05 | Not run: the 7-minute demo by the team with a timer; final tag | team |
+
 ## Not run yet
 | Check | Reason |
 |---|---|

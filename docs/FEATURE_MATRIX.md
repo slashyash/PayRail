@@ -1,6 +1,6 @@
 # PayRail — DBMS feature matrix (Task 6)
 
-Course requirement GL §4: at least 5 non-trivial SQL queries and at least 3 additional DBMS features. Each row points to the implementation, the test that proves it, and how to show it. Commands assume the admin libpq variables (see CLAUDE.md) or the Docker container (`docker compose exec -T db psql -U postgres -X -d payrail …`). Counts were read from the catalog of a freshly built database on 2026-11-02.
+Course requirement GL §4: at least 5 non-trivial SQL queries and at least 3 additional DBMS features. Each row points to the implementation, the test that proves it, and how to show it. Commands assume the admin libpq variables (`PGHOST PGPORT PGUSER PGPASSWORD`) or the Docker container (`docker compose exec -T db psql -U postgres -X -d payrail …`). Counts were read from the catalog of a freshly built database on 2026-11-02.
 
 ## A. Non-trivial SQL queries (CR-07)
 

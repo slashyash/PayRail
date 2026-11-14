@@ -28,7 +28,7 @@ The project is divided into five parts. Each part runs from the database to the 
 | **2. Double-entry ledger, money and setup** | Journal tables, deferred balance triggers, append-only protection and seal, paise arithmetic and rounding, balance views, trial balance (R1) and vendor statement (R2), Docker, build, seed and reset scripts | `db/schema/03_ledger, 04_helpers, 06_system_accounts, 30_views.sql`; R1/R2 in `32_reports.sql`; `db/seed/seed.sql`; `docker-compose.yml`, `db/build.sh`, `scripts/demo-reset.sh`; `pages/finance/TrialBalance.jsx`, `vendor/Statement.jsx`; tests `02_money`, `10_ledger`, `11_ledger_immutability`, `12_capture_example` | | |
 | **3. Checkout, payments and gateway (W1)** | Order placement with snapshots, payment attempts, capture/failure, simulated gateway with signed callbacks, idempotency, customer UI | `db/schema/20_wf_common, 21_wf_orders_payments.sql`; `backend/src/gateway.js`, `routes/{customer,gateway}.js`; `pages/{Catalogue,Cart,Pay,GatewayCheckout,Orders,OrderDetail}.jsx`, `finance/GatewaySimulator.jsx`; tests `20_orders_payments`, `customer.test.js`, `gateway.test.js`, `e2e/customer.spec.js` | | |
 | **4. Refunds, payouts and concurrency (W2, W3)** | Refund request/approve/reject with cumulative allocation, payout request/paid/failed with reversal, negative vendor balances, locking order, concurrency tests | `db/schema/22_wf_refunds, 23_wf_payouts.sql`; refund/payout routes in `routes/{customer,vendor,finance}.js`; `pages/Refunds.jsx`, `vendor/Payouts.jsx`, `finance/{Refunds,Payouts}.jsx`; `backend/test/concurrency/`, `scripts/demo-race.mjs`; tests `21_refunds`, `22_payouts` | | |
-| **5. Settlement, reconciliation, reports and performance (W4)** | Settlement CSV import, five reconciliation categories, reports R3–R6, indexes and EXPLAIN evidence, finance overview/trace pages, test runner and runbook | `db/schema/24_wf_settlements, 31_indexes.sql`; R3–R6 in `32_reports.sql`; `backend/src/settlementCsv.js`, `routes/reports.js`; `pages/finance/{Settlements,Reconciliation,Reports,Overview}.jsx`; `samples/settlements/`; `docs/evidence/`, `docs/FEATURE_MATRIX.md`, `docs/RUNBOOK.md`; tests `23_settlements`, `30_reports`, `reports.test.js` | | |
+| **5. Settlement, reconciliation, reports and performance (W4)** | Settlement CSV import, five reconciliation categories, reports R3–R6, indexes and EXPLAIN evidence, finance overview/trace pages, test runner and runbook | `db/schema/24_wf_settlements, 31_indexes.sql`; R3–R6 in `32_reports.sql`; `backend/src/settlementCsv.js`, `routes/reports.js`; `pages/finance/{Settlements,Reconciliation,Reports,Overview}.jsx`; `samples/settlements/`; `docs/evidence/`, `docs/FEATURE_MATRIX.md`; tests `23_settlements`, `30_reports`, `reports.test.js` | | |
 
 *Name and ID columns are filled in by the team with each member's actual work.*
 
@@ -66,7 +66,7 @@ Reset the demo data to its known state at any time (drops and reseeds database `
 ```bash
 scripts/demo-reset.sh --yes
 ```
-Troubleshooting and recovery: `docs/RUNBOOK.md` (the doctor prints the fix for each failure it finds).
+Troubleshooting and recovery: `cd backend && npm run doctor` prints the fix for each failure it finds; `docs/DEMO.md` has a reset and recovery table.
 
 ## Demo accounts
 
@@ -116,22 +116,22 @@ backend/          Express API (src/), API tests (test/api/), concurrency tests (
 frontend/         React UI (src/pages/{customer pages, vendor/, finance/}), Playwright tests (e2e/)
 samples/          settlement CSVs for the demo (normal, duplicate/conflict, exceptions)
 scripts/          demo-reset.sh, test-all.sh, demo-race.mjs, check-demo-sheet.sh
-docs/             design/ (design PDF + source), submission/ (demo sheet), DEMO.md, VIVA.md, RUNBOOK.md,
-                  FEATURE_MATRIX.md, DECISIONS.md, REQUIREMENTS.md, TEST_EVIDENCE.md
+docs/             design/ (design PDF + source), submission/ (demo sheet), DEMO.md,
+                  FEATURE_MATRIX.md, TEST_EVIDENCE.md
 ```
 
 ## Documents
 
 - Database design document (≤ 5 pages): `docs/design/PayRail_Database_Design.pdf` (source `design.html`, `er.dot`; rebuild with `docs/design/build.sh`)
 - Demo sheet: `docs/submission/PayRail_Demo_Sheet.pdf` (editable `.docx`); `scripts/check-demo-sheet.sh` verifies its file:line references
-- Demo script: `docs/DEMO.md` · viva notes: `docs/VIVA.md` · design decisions and deviations from the mid-semester design: `docs/DECISIONS.md`
+- Demo script: `docs/DEMO.md` · design decisions and deviations from the mid-semester design: section 9 of the design document
 
 ## Limitations
 
 - Gateway and bank are simulated (hosted test checkout, signed callbacks, CSV settlement files); no real payment integration.
 - Single currency (INR); GST only on commission; no shipping, stock, GST on goods or TCS.
 - Settlement is expected T+2 calendar days (IST); there is no holiday calendar.
-- A payout credits BANK when it is accepted; marking it paid only records the UTR (`docs/DECISIONS.md` DEC-008).
+- A payout credits BANK when it is accepted; marking it paid only records the UTR.
 - Mismatched settlement rows are reported for investigation; there is no manual-resolution workflow.
 - No self-registration; demo accounts are seeded. Database owner/superuser accounts are trusted.
 

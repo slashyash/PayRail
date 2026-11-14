@@ -1,7 +1,7 @@
 -- 02_tables.sql — the 12 relations (DBD §6) with keys and CHECK constraints.
 -- Column additions vs the midsem design: users.password_hash (DEC-002),
 -- refunds.gateway_ref, gateway_settlements.record_type / imported_at (DEC-009),
--- journal_entries.created_xid (DEC-006). See docs/DECISIONS.md DEC-021.
+-- journal_entries.created_xid (DEC-006). See design document section 9.
 --
 -- Conventions: money = BIGINT paise; surrogate keys = BIGINT identity;
 -- timestamps = timestamptz defaulting to fn_now(); every column NOT NULL

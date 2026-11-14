@@ -111,7 +111,8 @@ export default function Settlements() {
         <div className="flex flex-wrap items-end gap-3">
           <div>
             <label className="label" htmlFor="csv-file">CSV file (≤ 256 KB, ≤ 1000 rows)</label>
-            <input id="csv-file" type="file" accept=".csv,text/csv" className="text-sm" onChange={pickFile} />
+            <input id="csv-file" type="file" accept=".csv,text/csv" onChange={pickFile}
+              className="block cursor-pointer text-sm text-slate-600 file:mr-3 file:cursor-pointer file:rounded-md file:border-0 file:bg-indigo-600 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-white hover:file:bg-indigo-700" />
           </div>
           {fileName && <span className="text-xs text-slate-500">loaded {fileName}</span>}
         </div>
