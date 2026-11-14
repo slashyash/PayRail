@@ -351,6 +351,7 @@ test('settlement import (sample CSVs) and reconciliation; an unknown reference p
   const ref = `pay_S${attempt.payment_id.padStart(9, '0')}`;                   // the simulated gateway's success reference
   const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
   await page.getByRole('link', { name: 'Settlements' }).click();
+  await page.getByRole('tab', { name: 'Paste CSV' }).click();
   await page.getByLabel(/paste/).fill(`gateway_ref,record_type,gross_paise,fee_paise,settled_on\n${ref},payment,${attempt.amount_paise},0,${today}`);
   await page.getByRole('button', { name: 'Import' }).click();
   await expect(result(ref)).toContainText('not posted');

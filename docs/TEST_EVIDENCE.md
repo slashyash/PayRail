@@ -277,3 +277,16 @@ Environment: PostgreSQL 16.15 (`initdb`, TCP 127.0.0.1:5433, scram), node 22.23.
 | Manual API calls on a fresh seeded `payrail` (curl, as finance / vendor7 / customer1 / no token) | `/finance/overview` (default and `as_of=2026-09-30`), `/finance/trace/{payment,refund,entry}/:id`, `/finance/refunds/:id`, `/finance/payouts/:id`, `/finance/journal-entries?entry_id=` → 200 with expected rows; bad kind/id → 422; missing → 404; vendor/customer → 403; no token → 401 |
 | Playwright walk of Overview, Trace (payment/refund/entry/missing), Record (order/payout), Reconciliation, Settlements, Reports `?r=R6&vendor_id=7` | all rendered; the only console errors were the deliberate 404 and the induced connection reset |
 | Lost-response recovery (Playwright `route.fetch()` then `abort('connectionreset')`) | refund #40 approve → page showed "processed" + its ledger entry; payout #82 paid with UTR → page showed "paid — UTR …"; DB: payout `paid` with that UTR, still exactly 1 journal entry for it |
+
+### Settlement import page redesign (2026-11-14)
+UI only — no schema, API or workflow change. Files: `frontend/src/pages/finance/Settlements.jsx`, new `frontend/src/lib/settlementCsv.js` (+ `.test.js`, browser-side format preview mirroring `backend/src/settlementCsv.js`), `frontend/vite.config.js` (`server.fs.allow` adds `../samples/settlements` so the page can bundle the sample CSVs), `frontend/e2e/vendor-finance.spec.js` (clicks the new "Paste CSV" tab before pasting).
+Environment: cloud sandbox, PostgreSQL 16.15 on 127.0.0.1:5433, node 22.23.4, `main` @ `90c7a37` plus these files.
+
+| Check | Result |
+|---|---|
+| frontend `npm test` (money, recover, new settlementCsv) | **12/12** passed |
+| `vite build` | built |
+| `npx playwright test` (all e2e, fresh `payrail_e2e`) | **11 passed** |
+| Playwright screenshots at 1280 px and 420 px: empty state, `03_exceptions.csv` preview, import result, bad header in the Paste tab | rendered; no console errors |
+| Not run | SQL / API / concurrency suites (no backend or DB change); not run on the Mac |
+

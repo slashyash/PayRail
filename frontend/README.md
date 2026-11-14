@@ -57,7 +57,7 @@ It needs the admin connection from the root `.env` like the backend tests (`back
 | `/vendor/reports` | own balance decomposition (R6) and refund rate of own sales with a date window (R4) | `GET /api/vendor/reports/payables`, `/refund-risk` |
 | `/finance/refunds` | **finance:** refund queue, approve (shows the refund entry) / reject | `GET /api/finance/refunds`, `POST …/:id/approve|reject` |
 | `/finance/payouts` | payout queue: paid (UTR) / failed (shows request + reversal entries); vendor balances | `GET /api/finance/payouts`, `POST …/:id/complete`, `GET /api/finance/vendors` |
-| `/finance/settlements` | upload or paste a settlement CSV, per-row results, imported rows | `POST /api/finance/settlements/import` (text/csv), `GET /api/finance/settlements` |
+| `/finance/settlements` | upload (drag-and-drop) or paste a settlement CSV, one-click sample files, browser-side format preview (`src/lib/settlementCsv.js`, convenience only), per-row results with summary tiles, imported rows | `POST /api/finance/settlements/import` (text/csv), `GET /api/finance/settlements` |
 | `/finance/reconciliation` | as-of date, run reconciliation, category summary, filtered detail | `POST /api/finance/reconcile`, `GET /api/finance/reconciliation` |
 | `/finance/ledger` | trial balance (Σ D = Σ C) and latest journal entries by type | `GET /api/finance/trial-balance`, `/api/finance/journal-entries` |
 | `/finance/reports?r=R1…R6` | named reports: trial balance (Dr/Cr columns, as-of), vendor statement, monthly performance (Recharts bar chart + table), refund risk, settlement aging, vendor payables. Loaded lazily (own chunk with Recharts) | `GET /api/finance/reports/*` |
