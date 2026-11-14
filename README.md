@@ -20,7 +20,7 @@ Every money movement is a **double-entry journal entry** (Σ debits = Σ credits
 
 ## Individual contributions
 
-**All five members** worked together on the database design: problem analysis and requirements, the ER/EER model, the relational schema, keys and integrity constraints (PK, FK, UNIQUE, CHECK and business-rule triggers), normalization and the main design decisions (`db/schema/02_tables.sql`, `05_guards.sql`, `docs/design/`).
+**All five members** worked together on the database design: problem analysis and requirements, the ER/EER model, the relational schema, keys and integrity constraints (PK, FK, UNIQUE, CHECK and business-rule triggers), normalization and the main design decisions (`db/schema/02_tables.sql`, `05_guards.sql`, `docs/design/PayRail_Database_Design.pdf`).
 
 | Area | Member(s) | Scope | Main files |
 |---|---|---|---|
@@ -113,7 +113,7 @@ backend/          Express API (src/), API tests (test/api/), concurrency tests (
 frontend/         React UI (src/pages/{customer pages, vendor/, finance/}), Playwright tests (e2e/)
 samples/          settlement CSVs for the demo (normal, duplicate/conflict, exceptions)
 scripts/          demo-reset.sh, test-all.sh, demo-race.mjs, check-demo-sheet.sh
-docs/             design/ (design PDF + source), submission/ (demo sheet)
+docs/             design/ (database design PDF), submission/ (demo sheet)
 ```
 
 ## Limitations
