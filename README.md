@@ -6,31 +6,28 @@ PayRail is a simulated payments and settlement engine for a multi-vendor marketp
 
 Every money movement is a **double-entry journal entry** (Σ debits = Σ credits) in an **append-only ledger**. Balances are derived from the ledger, never stored. Each financial workflow is one atomic PostgreSQL stored function protected by constraints, triggers, row locks and idempotency keys. The gateway and the bank are simulated; no real money or credentials are involved.
 
-**Final submission:** tag `final` · commit `________________` *(filled in after tagging; see “Submitting” below)*
+**Final submission:** tag `final` · commit `________________`
 
 ## Team
 
 | Member | Student ID |
 |---|---|
-| Aluri Venkata Sai Anirudh | 2023B2AD0824H |
-| Yash Jain | 2023B2A80958H |
 | Aryan Saini | 2024A2PS1154H |
+| K Harsha Vardhan | 2023B4AD1155H |
+| Yash Jain | 2023B2A80958H |
+| Aluri Venkata Sai Anirudh | 2023B2AD0824H |
 | Parth Gupta | 2023B4AD0741H |
-| Harsha Vardhan | 2023B4AD1155H |
 
 ## Individual contributions
 
-The project is divided into five parts. Each part runs from the database to the API to the UI, so its owner can trace it end to end in the demo and viva.
+**All five members** worked together on the database design: problem analysis and requirements, the ER/EER model, the relational schema, keys and integrity constraints (PK, FK, UNIQUE, CHECK and business-rule triggers), normalization and the main design decisions (`db/schema/02_tables.sql`, `05_guards.sql`, `docs/design/`).
 
-| Part | Scope | Main files | Name | ID |
-|---|---|---|---|---|
-| **1. Data model, integrity and access control** | 12 tables, keys, CHECK/UNIQUE/FK constraints, business-rule triggers, database roles and privileges, login (bcrypt + JWT) and role/ownership checks, product create/edit/archive/delete | `db/schema/00_roles, 01_schema, 02_tables, 05_guards, 99_privileges.sql`; `backend/src/{auth,validate,errors}.js`, `routes/catalogue.js`; `frontend/src/pages/Login.jsx`, `vendor/Products.jsx`; tests `db/tests/01_constraints.sql`, `24_app_role.sql`, `backend/test/api/auth.test.js` | | |
-| **2. Double-entry ledger, money and setup** | Journal tables, deferred balance triggers, append-only protection and seal, paise arithmetic and rounding, balance views, trial balance (R1) and vendor statement (R2), Docker, build, seed and reset scripts | `db/schema/03_ledger, 04_helpers, 06_system_accounts, 30_views.sql`; R1/R2 in `32_reports.sql`; `db/seed/seed.sql`; `docker-compose.yml`, `db/build.sh`, `scripts/demo-reset.sh`; `pages/finance/TrialBalance.jsx`, `vendor/Statement.jsx`; tests `02_money`, `10_ledger`, `11_ledger_immutability`, `12_capture_example` | | |
-| **3. Checkout, payments and gateway (W1)** | Order placement with snapshots, payment attempts, capture/failure, simulated gateway with signed callbacks, idempotency, customer UI | `db/schema/20_wf_common, 21_wf_orders_payments.sql`; `backend/src/gateway.js`, `routes/{customer,gateway}.js`; `pages/{Catalogue,Cart,Pay,GatewayCheckout,Orders,OrderDetail}.jsx`, `finance/GatewaySimulator.jsx`; tests `20_orders_payments`, `customer.test.js`, `gateway.test.js`, `e2e/customer.spec.js` | | |
-| **4. Refunds, payouts and concurrency (W2, W3)** | Refund request/approve/reject with cumulative allocation, payout request/paid/failed with reversal, negative vendor balances, locking order, concurrency tests | `db/schema/22_wf_refunds, 23_wf_payouts.sql`; refund/payout routes in `routes/{customer,vendor,finance}.js`; `pages/Refunds.jsx`, `vendor/Payouts.jsx`, `finance/{Refunds,Payouts}.jsx`; `backend/test/concurrency/`, `scripts/demo-race.mjs`; tests `21_refunds`, `22_payouts` | | |
-| **5. Settlement, reconciliation, reports and performance (W4)** | Settlement CSV import, five reconciliation categories, reports R3–R6, indexes and EXPLAIN evidence, finance overview/trace pages, test runner and runbook | `db/schema/24_wf_settlements, 31_indexes.sql`; R3–R6 in `32_reports.sql`; `backend/src/settlementCsv.js`, `routes/reports.js`; `pages/finance/{Settlements,Reconciliation,Reports,Overview}.jsx`; `samples/settlements/`; `docs/evidence/`, `docs/FEATURE_MATRIX.md`; tests `23_settlements`, `30_reports`, `reports.test.js` | | |
-
-*Name and ID columns are filled in by the team with each member's actual work.*
+| Area | Member(s) | Scope | Main files |
+|---|---|---|---|
+| **Database workflows** | Yash Jain (2023B2A80958H), Aluri Venkata Sai Anirudh (2023B2AD0824H) | Stored functions for order placement, payment capture, refunds (cumulative allocation), payouts (with failure reversal) and settlement import; double-entry ledger with deferred balance checks and append-only protection; money rounding; row-locking order; idempotency keys; database roles and privileges | `db/schema/00_roles, 01_schema, 03_ledger, 04_helpers, 06_system_accounts, 20_wf_common, 21_wf_orders_payments, 22_wf_refunds, 23_wf_payouts, 24_wf_settlements, 99_privileges.sql` |
+| **Backend / API** | K Harsha Vardhan (2023B4AD1155H) | Express API over the stored functions, login (bcrypt + JWT), role and ownership checks, Zod input validation, error and SQLSTATE mapping, simulated gateway with signed callbacks, settlement CSV parser | `backend/src/` (`app.js`, `auth.js`, `validate.js`, `errors.js`, `gateway.js`, `settlementCsv.js`, `routes/`) |
+| **Frontend / UI** | Aryan Saini (2024A2PS1154H) | Customer shop, cart, checkout, orders and refunds; vendor products, statement and payouts; finance refunds, payouts, settlement import, reconciliation, ledger and reports pages | `frontend/src/` (`pages/`, `pages/vendor/`, `pages/finance/`, `components/`, `lib/`) |
+| **Reports, testing, setup and documentation** | Parth Gupta (2023B4AD0741H) | SQL reports R1–R6, views, indexes and EXPLAIN evidence; SQL, API, concurrency and browser tests; Docker, build, seed and reset scripts, sample settlement files; README, Demo Sheet and design document | `db/schema/30_views, 31_indexes, 32_reports.sql`, `db/reports/`; `db/tests/`, `backend/test/`, `frontend/e2e/`; `docker-compose.yml`, `db/build.sh`, `db/reset_dev.sh`, `db/seed/`, `scripts/`, `samples/`; `README.md`, `docs/` |
 
 ## Technology stack
 
@@ -66,7 +63,7 @@ Reset the demo data to its known state at any time (drops and reseeds database `
 ```bash
 scripts/demo-reset.sh --yes
 ```
-Troubleshooting and recovery: `cd backend && npm run doctor` prints the fix for each failure it finds; `docs/DEMO.md` has a reset and recovery table.
+Troubleshooting and recovery: `cd backend && npm run doctor` prints the fix for each failure it finds.
 
 ## Demo accounts
 
@@ -94,16 +91,16 @@ Product CRUD (create, edit, archive, reactivate, delete a never-ordered product;
 ## SQL queries and DBMS features
 
 - **Six named reports** (`db/schema/32_reports.sql`): R1 trial balance (GROUPING SETS), R2 vendor statement (window running balance), R3 monthly performance (generate_series, CTEs), R4 vendor refund risk (cohort, rank()), R5 settlement aging, R6 vendor payables. Finance → Reports; Vendor → Reports/Statement; or `psql -X -d payrail -f db/reports/run_reports.sql`. Walkthrough: `db/reports/README.md`.
-- **DBMS features**: transactions with `SELECT … FOR UPDATE` row locks, deferred constraint triggers (balanced entries checked at COMMIT), append-only ledger triggers, state-machine triggers, views for derived data, partial unique index, indexes justified with `EXPLAIN (ANALYZE, BUFFERS)` (`docs/evidence/T6_explain_seed.txt`), SECURITY DEFINER functions and role privileges. Full list with file paths and tests: `docs/FEATURE_MATRIX.md`.
+- **DBMS features**: transactions with `SELECT … FOR UPDATE` row locks, deferred constraint triggers (balanced entries checked at COMMIT), append-only ledger triggers, state-machine triggers, views for derived data, partial unique index, indexes justified with `EXPLAIN (ANALYZE, BUFFERS)` (`db/reports/explain_reports.sql`), SECURITY DEFINER functions and role privileges. File paths and line numbers: the Demo Sheet (`docs/submission/`).
 - **Data**: 12 tables, 5,769 records from a deterministic seed that uses the same stored functions as the app. Trial balance ₹80,14,286.31 on both sides.
 
 ## Tests
 
 ```bash
 cd frontend && npx playwright install chromium && cd ..    # once
-scripts/test-all.sh                                        # SQL 304 · API 46 · concurrency 12 · unit 5 · build · e2e 11
+scripts/test-all.sh                                        # SQL 304 · API 46 · concurrency 12 · unit 12 · build · e2e 11
 ```
-Each suite uses its own test database; the demo database is not touched. Full output is kept in `test-logs/`. Observed results: `docs/TEST_EVIDENCE.md`.
+Each suite uses its own test database; the demo database is not touched. Full output is kept in `test-logs/`.
 
 ## Repository layout
 
@@ -116,15 +113,8 @@ backend/          Express API (src/), API tests (test/api/), concurrency tests (
 frontend/         React UI (src/pages/{customer pages, vendor/, finance/}), Playwright tests (e2e/)
 samples/          settlement CSVs for the demo (normal, duplicate/conflict, exceptions)
 scripts/          demo-reset.sh, test-all.sh, demo-race.mjs, check-demo-sheet.sh
-docs/             design/ (design PDF + source), submission/ (demo sheet), DEMO.md,
-                  FEATURE_MATRIX.md, TEST_EVIDENCE.md
+docs/             design/ (design PDF + source), submission/ (demo sheet)
 ```
-
-## Documents
-
-- Database design document (≤ 5 pages): `docs/design/PayRail_Database_Design.pdf` (source `design.html`, `er.dot`; rebuild with `docs/design/build.sh`)
-- Demo sheet: `docs/submission/PayRail_Demo_Sheet.pdf` (editable `.docx`); `scripts/check-demo-sheet.sh` verifies its file:line references
-- Demo script: `docs/DEMO.md` · design decisions and deviations from the mid-semester design: section 9 of the design document
 
 ## Limitations
 
@@ -134,10 +124,3 @@ docs/             design/ (design PDF + source), submission/ (demo sheet), DEMO.
 - A payout credits BANK when it is accepted; marking it paid only records the UTR.
 - Mismatched settlement rows are reported for investigation; there is no manual-resolution workflow.
 - No self-registration; demo accounts are seeded. Database owner/superuser accounts are trusted.
-
-## Submitting
-
-A commit cannot contain its own hash, so the hash is recorded in a README-only commit that becomes the tagged one:
-1. Commit the finished code; check `scripts/test-all.sh` and `scripts/check-demo-sheet.sh` pass. Note its hash: `git rev-parse --short HEAD`.
-2. Put that hash in the “Final submission” line above and in the Demo Sheet, commit the README change only, push.
-3. Tag that commit and push the tag: `git tag final && git push origin final`. The tagged commit differs from the recorded code commit only in this README line.

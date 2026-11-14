@@ -18,7 +18,7 @@ PostgreSQL 16, schema `payrail`. Plain ordered SQL files, no migration framework
 | `schema/23_wf_payouts.sql` | W2: `fn_request_payout`, `fn_complete_payout` (paid / failed → reversal) |
 | `schema/24_wf_settlements.sql` | W4: `fn_record_settlement`, `fn_reconcile`, `fn_reconciliation_report` |
 | `schema/30_views.sql` | `v_account_balances`, `v_order_line_allocation`, `v_order_summary`, `v_vendor_statement` |
-| `schema/31_indexes.sql` | secondary indexes (EXPLAIN evidence: `docs/evidence/T6_explain_seed.txt`) |
+| `schema/31_indexes.sql` | secondary indexes (EXPLAIN: `reports/explain_reports.sql`) |
 | `schema/32_reports.sql` | named reports R1–R6: `fn_report_trial_balance`, `fn_report_vendor_statement`, `fn_report_monthly_performance`, `fn_report_vendor_refund_risk`, `fn_report_settlement_aging`, `fn_report_vendor_payables` (read-only, inlinable SQL) |
 | `schema/99_privileges.sql` | least-privilege grants for `payrail_app` |
 | `seed/seed.sql` | deterministic demo data, generated **through the workflow functions** under the controlled clock (1 Sep – 31 Oct 2026) |
@@ -74,7 +74,7 @@ Retries: same key + same data → the original row; same key + different data �
 ## Demo data (seed)
 Password for **every** seeded login: `PayRail@2026`. Named accounts: `finance@payrail.demo` (finance_admin),
 `vendor1@payrail.demo` … `vendor12@payrail.demo` (vendor 11 KYC pending, 12 rejected), `customer1@payrail.demo` … `customer60@payrail.demo`.
-Reconciliation demo date: `2026-10-31`. Observed counts and totals: `docs/TEST_EVIDENCE.md` (T2).
+Reconciliation demo date: `2026-10-31`.
 
 ## SQLSTATE codes raised by PayRail
 | Code | Meaning |

@@ -134,5 +134,5 @@ SELECT t_assert(md5(string_agg(x, '|' ORDER BY x)) = :'fp1', 'same rows') FROM (
 \c :db1
 DROP DATABASE payrail_test_seed2 WITH (FORCE);
 
--- Printed for docs/TEST_EVIDENCE.md when run directly
+-- Printed when run directly
 \echo seed fingerprint :fp1

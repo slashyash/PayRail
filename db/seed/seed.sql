@@ -421,7 +421,7 @@ $seed$;
 RESET payrail.clock;
 RESET ROLE;
 
--- ---------------------------------------------------------------- summary (observed values go to docs/TEST_EVIDENCE.md)
+-- ---------------------------------------------------------------- summary
 \pset footer off
 SELECT 'users' AS relation, count(*) AS rows FROM payrail.users
 UNION ALL SELECT 'vendors', count(*) FROM payrail.vendors

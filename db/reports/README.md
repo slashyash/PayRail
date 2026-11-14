@@ -5,7 +5,7 @@ The SQL lives in **`db/schema/32_reports.sql`** (built with the schema; EXECUTE 
 | File | What it does |
 |---|---|
 | `run_reports.sql` | prints all six reports with rupee formatting — `psql -X -d payrail -v vendor=3 -v as_of=2026-10-31 -f db/reports/run_reports.sql` |
-| `explain_reports.sql` | `EXPLAIN (ANALYZE, BUFFERS)` of every report on the seeded DB + an index experiment inside `BEGIN … ROLLBACK` — output kept in `docs/evidence/T6_explain_seed.txt` |
+| `explain_reports.sql` | `EXPLAIN (ANALYZE, BUFFERS)` of every report on the seeded DB + an index experiment inside `BEGIN … ROLLBACK` |
 
 Docker: `docker compose exec -T db psql -U postgres -X -d payrail -f /payrail/db/reports/run_reports.sql` (same for `explain_reports.sql`).
 
@@ -72,7 +72,7 @@ Tests: `db/tests/30_reports.sql` (24 checks on a hand-checkable fixture — ever
 - **Cross-relation check `ledger_consistent`:** ledger payout debits − reversal credits = Σ payouts in status requested or paid (failed ones are reversed). True for every seeded vendor.
 - **Status:** negative / payouts_blocked_kyc / nothing_payable / payable.
 
-## EXPLAIN findings (seeded DB, `docs/evidence/T6_explain_seed.txt`)
+## EXPLAIN findings (seeded DB)
 - **Scale:** the largest table, `ledger_lines`, has 2,742 rows in 23 pages. At this size the planner rightly uses sequential scans and hash joins for whole-ledger reports (R1, R3: one pass over 23 pages). We make no speed claims.
 - **All five inlinable reports are inlined:** the plans show the real joins, not a `Function Scan`. R5's inner function has a pinned `search_path`, so it is not inlined; `auto_explain` (nested statements) prints its plan.
 - **Filter push-down below the window (R2, R6):** `vendor_id = 3` reaches `accounts`, and only that vendor's 59 lines are read through a **Bitmap Index Scan on `ledger_lines_account_entry_idx`**; the date filter stays above the `WindowAgg`.
@@ -82,7 +82,7 @@ Tests: `db/tests/30_reports.sql` (24 checks on a hand-checkable fixture — ever
 - `orders_customer_created_idx` is used for a customer's order history (Bitmap Index Scan). The small partial queue indexes and `payouts_vendor_idx` / `gateway_settlements_settled_on_idx` are not chosen at seed size (1–5 page tables); they are kept for FK checks and growth, without claimed benefits.
 
 ## Viva questions this covers
-- Why does filtering before the window function give a wrong running balance? (R2; test `R2: date window`; mutation evidence in TEST_EVIDENCE T6-04.)
+- Why does filtering before the window function give a wrong running balance? (R2; test `R2: date window`.)
 - What is join fan-out and how do the reports avoid it? (R4 test; rule 1.)
 - What do `GROUPING SETS` / `grouping()` produce? (R1 total row; R5 subtotals.)
 - Why is the refund rate in R3 different from R4? (period vs cohort denominators.)
